@@ -18,7 +18,14 @@ internal sealed class FalloutInstallationSettings
         settings._floatDefaults = new(() => FalloutExecutableStringTable.ReadFloatDefaults(
             Path.Combine(Path.GetDirectoryName(source.ContentRoot)!,
                 source.Game == RuntimeLiveContentSource.FalloutNewVegasGame ? "FalloutNV.exe" : "Fallout3.exe")));
-        settings.Add(Path.Combine(Path.GetDirectoryName(source.ContentRoot)!, "Fallout_default.ini"), true);
+        var installRoot = Path.GetDirectoryName(source.ContentRoot)!;
+        // Same case-sensitivity issue as RuntimeLiveContentSource: GOG ships
+        // "Fallout_Default.ini" and a hard-coded lowercase path is a false negative.
+        var defaultIni = Directory.EnumerateFiles(installRoot)
+                             .FirstOrDefault(path => Path.GetFileName(path)
+                                 .Equals("Fallout_default.ini", StringComparison.OrdinalIgnoreCase))
+                         ?? Path.Combine(installRoot, "Fallout_default.ini");
+        settings.Add(defaultIni, true);
         var gameFolder = source.Game == RuntimeLiveContentSource.FalloutNewVegasGame ? "FalloutNV" : "Fallout3";
         var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         var user = Path.Combine(documents, "My Games", gameFolder);

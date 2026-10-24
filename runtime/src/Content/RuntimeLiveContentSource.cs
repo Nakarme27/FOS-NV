@@ -432,9 +432,14 @@ internal sealed class RuntimeLiveContentSource : IDisposable
         var configuredIni = string.IsNullOrWhiteSpace(documents)
             ? string.Empty
             : Path.Combine(documents, "My Games", profileName, "Fallout.ini");
-        var defaultIni = Path.Combine(
-            Directory.GetParent(dataRoot)?.FullName ?? dataRoot,
-            "Fallout_default.ini");
+        var installRoot = Directory.GetParent(dataRoot)?.FullName ?? dataRoot;
+        // GOG and retail installers ship "Fallout_Default.ini" with a capital D.
+        // On a case-sensitive filesystem (Linux, Android) the hard-coded lowercase
+        // name misses the archive list and the runtime reports "no live BSA files".
+        var defaultIni = Directory.EnumerateFiles(installRoot)
+                             .FirstOrDefault(path => Path.GetFileName(path)
+                                 .Equals("Fallout_default.ini", StringComparison.OrdinalIgnoreCase))
+                         ?? Path.Combine(installRoot, "Fallout_default.ini");
         var iniPath = archiveIniPath ?? (File.Exists(configuredIni) ? configuredIni : defaultIni);
         if (archiveIniPath is not null && !File.Exists(iniPath))
             throw new FileNotFoundException("The selected archive configuration is missing.", iniPath);
