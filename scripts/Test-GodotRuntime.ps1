@@ -11,6 +11,9 @@ $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $runtime = Join-Path $repository "runtime"
 $solution = Join-Path $runtime "OpenNV.sln"
 
+& (Join-Path $PSScriptRoot "Test-AndroidProductContract.ps1")
+if ($LASTEXITCODE -ne 0) { throw "Android product contract failed." }
+
 $pythonFiles = @(& git -C $repository ls-files --cached --others --exclude-standard -- "*.py" "*.pyw" "*.spec" |
     Where-Object { Test-Path -LiteralPath (Join-Path $repository $_) -PathType Leaf })
 if ($pythonFiles.Count -ne 0) {
