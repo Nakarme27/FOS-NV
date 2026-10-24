@@ -62,4 +62,19 @@ if (-not $csproj.Contains('<TargetFramework>net9.0</TargetFramework>', [StringCo
     throw "Godot 4.7.2 Android export requires the OpenNV C# project to target net9.0."
 }
 
+$incompatibleProjectReferences = @(
+    Get-ChildItem -LiteralPath $repository -Recurse -File -Filter "*.csproj" |
+        ForEach-Object {
+            $content = Get-Content -LiteralPath $_.FullName -Raw
+            if ($content -match '(?i)<ProjectReference\s+Include="[^"]*OpenNV\.csproj"' -and
+                $content -notmatch '<TargetFramework>net9\.0</TargetFramework>') {
+                [IO.Path]::GetRelativePath($repository, $_.FullName)
+            }
+        }
+)
+if ($incompatibleProjectReferences.Count -ne 0) {
+    $formatted = ($incompatibleProjectReferences | Sort-Object | ForEach-Object { " - $_" }) -join "`n"
+    throw "Projects that reference the net9.0 OpenNV runtime must also target net9.0:`n$formatted"
+}
+
 Write-Output "OPENNV_ANDROID_PRODUCT_CONTRACT_PASS launcher=true hardcodedStorage=false gradleTemplate=false arm64=true dotnet=net9.0"
