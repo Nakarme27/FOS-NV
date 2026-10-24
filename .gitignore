@@ -11,6 +11,9 @@
 /desktop/assets/open-nevada-reddit-banner-*-safe-v2.png
 /runtime/.godot/
 /runtime/.mono/
+/runtime/android/build/
+/runtime/android/.gradle/
+/build/
 /runtime/generated/
 /runtime/bin/
 /runtime/obj/
