@@ -9,6 +9,13 @@ on:
       - "runtime/**"
       - "scripts/Test-AndroidProductContract.ps1"
       - ".github/workflows/android-apk.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "runtime/**"
+      - "scripts/Test-AndroidProductContract.ps1"
+      - ".github/workflows/android-apk.yml"
 
 permissions:
   contents: read
@@ -54,7 +61,6 @@ jobs:
             "platform-tools" \
             "build-tools;35.0.1" \
             "platforms;android-35" \
-            "cmdline-tools;latest" \
             "cmake;3.10.2.4988404" \
             "ndk;28.1.13356709"
 
@@ -83,8 +89,8 @@ jobs:
         id: templates-cache
         uses: actions/cache@v4
         with:
-          path: ~/.local/share/godot/export_templates/4.7.2.stable
-          key: godot-4.7.2-stable-mono-export-templates
+          path: ~/.local/share/godot/export_templates/4.7.2.stable.mono
+          key: godot-4.7.2-stable-mono-export-templates-v2
 
       - name: Install pinned Godot Mono export templates
         if: steps.templates-cache.outputs.cache-hit != 'true'
@@ -93,7 +99,7 @@ jobs:
           set -euo pipefail
           archive="$RUNNER_TEMP/godot-mono-export-templates.tpz"
           root="$RUNNER_TEMP/godot-mono-export-templates"
-          destination="$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          destination="$HOME/.local/share/godot/export_templates/4.7.2.stable.mono"
           expected='92f8681e349ef1f90891b792da95e3b2b0bd1ed610b78018c58feb2d87e15a9d'
           curl --fail --location --retry 3 \
             "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_export_templates.tpz" \
@@ -104,6 +110,7 @@ jobs:
           unzip -q "$archive" -d "$root"
           cp -a "$root/templates/." "$destination/"
           test -f "$destination/android_debug.apk"
+          test -f "$destination/android_release.apk"
 
       - name: Configure Godot Android export tools
         shell: bash
@@ -131,7 +138,6 @@ jobs:
           export/android/debug_keystore = "$keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
-          export/android/shutdown_adb_on_exit = true
           EOF
 
       - name: Export Android debug APK
