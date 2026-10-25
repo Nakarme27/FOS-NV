@@ -164,7 +164,7 @@ internal static class FosNvLog
                 PendingExternalLines.Clear();
             }
 
-            File.AppendAllText(PreferredLogPath, line + Environment.NewLine);
+            File.AppendAllText(PreferredLogPath, line + System.Environment.NewLine);
             return true;
         }
         catch
@@ -182,7 +182,7 @@ internal static class FosNvLog
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
             RotateIfNeeded(fallback);
-            File.AppendAllText(fallback, line + Environment.NewLine);
+            File.AppendAllText(fallback, line + System.Environment.NewLine);
         }
         catch
         {
