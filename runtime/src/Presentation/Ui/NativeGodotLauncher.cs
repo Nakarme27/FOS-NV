@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Godot;
 using OpenNV.Runtime.Content;
+using OpenNV.Runtime.Diagnostics;
 
 namespace OpenNV.Runtime.Presentation.Ui;
 
@@ -110,6 +111,9 @@ internal sealed partial class NativeGodotLauncher : Control
 
     public override void _Ready()
     {
+        FosNvLog.Initialize();
+        FosNvLog.Info("launcher_ui_ready", $"log={FosNvLog.PreferredLogPath}");
+
         Configure();
         Name = "OpenNVGodotLauncher";
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -153,6 +157,7 @@ internal sealed partial class NativeGodotLauncher : Control
 
     internal void ReportLaunchFailure(string message)
     {
+        FosNvLog.Error("launcher_reported_failure", message);
         _launching = false;
         _toast.Text = message;
         _toast.AddThemeColorOverride("font_color", new Color(0.86f, 0.61f, 0.33f));
@@ -184,6 +189,9 @@ internal sealed partial class NativeGodotLauncher : Control
             return;
         _selectingDependency = dependency;
         _selectingBaseGame = baseGame;
+        FosNvLog.Info(
+            "folder_picker_open",
+            $"campaign={_selectedId} dependency={dependency} baseGame={baseGame}");
         _fileDialog = new FileDialog
         {
             Name = "OwnedInstallationPicker",
@@ -201,6 +209,11 @@ internal sealed partial class NativeGodotLauncher : Control
 
     private void OnDirectorySelected(string path)
     {
+        FosNvLog.Info(
+            "folder_picker_result",
+            $"campaign={_selectedId} path={path} dependency={_selectingDependency} baseGame={_selectingBaseGame}");
+        FosNvLog.ProbeSelectedGameFolder(path);
+
         try
         {
             var campaign = CurrentCampaign();
@@ -237,12 +250,17 @@ internal sealed partial class NativeGodotLauncher : Control
                         $"That folder is {installation.Game}, but {campaign.Title} needs {expected}.");
                 _profiles.Save(campaign.Id, installation.InstallRoot);
             }
+            FosNvLog.Info("folder_saved", $"campaign={campaign.Id} selected={path}");
             _toast.Text = "Folder saved. Your original files stay in place.";
             _toast.AddThemeColorOverride("font_color", new Color(0.47f, 0.84f, 0.62f));
         }
         catch (Exception exception)
         {
-            _toast.Text = exception.Message;
+            FosNvLog.Exception(
+                "folder_selection_fail",
+                exception,
+                $"campaign={_selectedId} path={path} dependency={_selectingDependency} baseGame={_selectingBaseGame}");
+            _toast.Text = exception.Message + "\nDiagnostic: Download/FOS NV/fosnv.log";
             _toast.AddThemeColorOverride("font_color", new Color(0.86f, 0.61f, 0.33f));
         }
         finally
@@ -267,6 +285,7 @@ internal sealed partial class NativeGodotLauncher : Control
         var campaign = LaunchCampaign();
         if (!TryGetValidatedProfile(campaign.Id, out var profile, out var message) || profile is null)
         {
+            FosNvLog.Error("launch_profile_invalid", $"campaign={campaign.Id} message={message}");
             _toast.Text = message;
             return;
         }
@@ -304,10 +323,15 @@ internal sealed partial class NativeGodotLauncher : Control
                 selection);
             GD.Print($"OPENNV_GODOT_LAUNCH_REQUEST campaign={campaign.Id} presentation={_selectedPresentation} " +
                 $"source={profile.InstallRoot} save={profile.SavePath} mode=in-process");
+            FosNvLog.Info(
+                "launch_request",
+                $"campaign={campaign.Id} presentation={_selectedPresentation} source={request.DataRoot} " +
+                $"save={request.SavePath} mode=in-process");
             LaunchRequested?.Invoke(request);
         }
         catch (Exception exception)
         {
+            FosNvLog.Exception("launch_request_fail", exception, $"campaign={campaign.Id}");
             _toast.Text = exception.Message;
             _launching = false;
         }
@@ -347,6 +371,10 @@ internal sealed partial class NativeGodotLauncher : Control
         }
         catch (Exception exception)
         {
+            FosNvLog.Exception(
+                "profile_validation_fail",
+                exception,
+                $"campaign={campaignId} storedRoot={stored.InstallRoot}");
             message = $"Registered installation is unavailable: {exception.Message}";
             return false;
         }
