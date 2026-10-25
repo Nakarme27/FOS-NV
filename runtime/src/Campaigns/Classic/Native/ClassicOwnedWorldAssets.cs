@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Godot;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Formats.Gamebryo;
+using OpenNV.Runtime.Presentation.Rendering;
 
 namespace OpenNV.Runtime.Campaigns.Classic.Native;
 
@@ -75,7 +76,7 @@ internal sealed class ClassicOwnedWorldAssets : IDisposable
             if (!source.TryRead(path, null, out var bytes, out var identity)) throw new FileNotFoundException(path);
             using var image = new Image();
             if (image.LoadDdsFromBuffer(bytes) != Error.Ok || image.IsEmpty()) throw new InvalidDataException("Owned cave texture failed to decode: " + path);
-            var texture = ImageTexture.CreateFromImage(image); texture.SetMeta("owned_source", identity); return texture;
+            var texture = NativeDdsTexture.Create(image); texture.SetMeta("owned_source", identity); return texture;
         }
         var material = new StandardMaterial3D
         {

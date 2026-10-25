@@ -2382,15 +2382,26 @@ internal static partial class RuntimeNativeNifMeshBuilder
                 material.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
         }
 
+        private static readonly HashSet<string> UnresolvedTextures = new(StringComparer.OrdinalIgnoreCase);
+
         private Texture2D? LoadTexture(string logicalPath, bool normal)
         {
             if (string.IsNullOrEmpty(logicalPath))
                 return null;
-            var (payload, source) = ReadTexture(logicalPath);
-            var texture = NativeDdsTexture.Load(payload, source, normal);
-            texture.SetMeta("opennv_source_texture", source);
-            texture.SetMeta("opennv_logical_texture", logicalPath);
-            return texture;
+            try
+            {
+                var (payload, source) = ReadTexture(logicalPath);
+                var texture = NativeDdsTexture.Load(payload, source, normal);
+                texture.SetMeta("opennv_source_texture", source);
+                texture.SetMeta("opennv_logical_texture", logicalPath);
+                return texture;
+            }
+            catch (Exception error) when (error is FileNotFoundException or InvalidDataException or NotSupportedException)
+            {
+                if (UnresolvedTextures.Add(logicalPath))
+                    GD.PushWarning($"OPENNV_TEXTURE_UNRESOLVED path={logicalPath} reason={error.GetType().Name}: {error.Message}");
+                throw;
+            }
         }
 
         private Cubemap LoadCubemap(string logicalPath)

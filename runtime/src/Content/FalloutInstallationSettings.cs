@@ -8,6 +8,8 @@ internal sealed class FalloutInstallationSettings
     private readonly Dictionary<string, string> _values = new(StringComparer.OrdinalIgnoreCase);
     private Lazy<IReadOnlyDictionary<string, float>> _floatDefaults = null!;
     private Lazy<FalloutRendererConfiguration> _renderer = null!;
+    /// <summary>Retail HUD colour (0x00FF00) used when the user profile never defined one.</summary>
+    internal const uint DefaultHudColor = 0x00FF00;
     internal FalloutRendererConfiguration Renderer => _renderer.Value;
 
     internal static FalloutInstallationSettings Read(RuntimeLiveContentSource source) => Instances.GetValue(source, ReadInstallation);
@@ -29,10 +31,26 @@ internal sealed class FalloutInstallationSettings
         var gameFolder = source.Game == RuntimeLiveContentSource.FalloutNewVegasGame ? "FalloutNV" : "Fallout3";
         var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         var user = Path.Combine(documents, "My Games", gameFolder);
-        settings._renderer = new(() => FalloutRendererConfiguration.Read(File.ReadAllText(Path.Combine(user, "RendererInfo.txt"))));
+        settings._renderer = new(() =>
+        {
+            // Windows writes RendererInfo.txt on the game's first launch. On Android the
+            // file never exists and SpecialFolder.MyDocuments resolves to "/data", so the
+            // unconditional read threw DirectoryNotFoundException from this Lazy and killed
+            // menu loading (OPENNV_NATIVE_MENU_LOAD_FAIL). Fall back to the standard profile.
+            var rendererInfo = Path.Combine(user, "RendererInfo.txt");
+            return File.Exists(rendererInfo)
+                ? FalloutRendererConfiguration.Read(File.ReadAllText(rendererInfo))
+                : FalloutRendererConfiguration.Default;
+        });
         settings.Add(Path.Combine(user, "Fallout.ini"), false);
         settings.Add(Path.Combine(user, "FalloutPrefs.ini"), false);
         settings.Add(Path.Combine(user, "FalloutCustom.ini"), false);
+        // uHUDColor lives in FalloutPrefs.ini, which Windows creates on the game's first
+        // launch. A fresh retail copy (and any Android install) has no such file, and the
+        // shipped Fallout_default.ini does not carry the key either, so party start-up
+        // aborted with "Owned installation setting is missing: [Interface] uHUDColor".
+        // Seed the retail green HUD colour (0x00FF00, stored as decimal by the game).
+        settings._values.TryAdd("Interface/uHUDColor", DefaultHudColor.ToString(CultureInfo.InvariantCulture));
         return settings;
     }
 

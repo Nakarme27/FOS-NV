@@ -6,6 +6,15 @@ namespace OpenNV.Runtime.Content;
 /// <summary>The renderer profile selected in the owned installation's configuration.</summary>
 internal sealed record FalloutRendererConfiguration(int ShaderPackage)
 {
+    /// <summary>
+    /// Shader package used when the owned installation has no RendererInfo.txt. Windows
+    /// generates that file on first launch; on Android/Linux it never exists, and the game's
+    /// default profile for a modern GPU is package 3.
+    /// </summary>
+    internal const int DefaultShaderPackage = 3;
+
+    internal static FalloutRendererConfiguration Default { get; } = new(DefaultShaderPackage);
+
     internal static FalloutRendererConfiguration Read(string text)
     {
         var rows = text.Split('\n').Select(line => line.Trim())

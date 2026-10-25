@@ -241,6 +241,16 @@ internal sealed partial class NativeGamebryoMovie : CanvasLayer
     {
         if (_failed || _finished)
             return;
+        // A partial installation legitimately ships without Data/Video/*.bik, and Android
+        // has no external ffprobe binary for the Bink decoder. Retail PlayBink skips an
+        // unavailable movie instead of freezing the game, so mirror that and let the
+        // caller carry on to the menu.
+        if (error is FileNotFoundException or System.ComponentModel.Win32Exception)
+        {
+            GD.PushWarning($"OPENNV_MOVIE_SKIPPED missing={_command.FileName} reason={error.GetType().Name}");
+            Finish(interrupted: true);
+            return;
+        }
         _failed = true;
         StopAudioPump();
         _decoder.Dispose();
