@@ -1,5 +1,6 @@
 using Godot;
 using OpenNV.Runtime.Content;
+using OpenNV.Runtime.Diagnostics;
 using OpenNV.Runtime.Presentation.Ui;
 
 namespace OpenNV.Runtime;
@@ -8,6 +9,12 @@ public partial class RuntimeCoordinator
 {
     private void LoadGodotLauncher()
     {
+        FosNvLog.Initialize();
+        FosNvLog.Info(
+            "launcher_load",
+            $"android={AndroidStorageAccess.IsAndroid} storageAccess={AndroidStorageAccess.HasRequiredAccess()} " +
+            $"log={FosNvLog.PreferredLogPath}");
+
         var launcher = new NativeGodotLauncher();
         launcher.Configure();
         launcher.LaunchRequested += request => StartInProcessLaunch(launcher, request);
@@ -18,6 +25,7 @@ public partial class RuntimeCoordinator
 
         if (!AndroidStorageAccess.HasRequiredAccess())
         {
+            FosNvLog.Error("android_storage_missing", AndroidStorageAccess.RequiredAccessMessage);
             launcher.ReportLaunchFailure(AndroidStorageAccess.RequiredAccessMessage);
             AndroidStorageAccess.RequestRequiredAccess();
         }
@@ -29,6 +37,11 @@ public partial class RuntimeCoordinator
         NativeGodotLauncher launcher,
         NativeGodotLauncherLaunchRequest request)
     {
+        FosNvLog.Info(
+            "route_start",
+            $"campaign={request.CampaignId} engineCampaign={request.EngineCampaign} " +
+            $"presentation={request.Presentation} dataRoot={request.DataRoot} save={request.SavePath}");
+
         try
         {
             if (!AndroidStorageAccess.HasRequiredAccess())
@@ -73,12 +86,19 @@ public partial class RuntimeCoordinator
             launcher.QueueFree();
             GD.Print($"OPENNV_GODOT_IN_PROCESS_ROUTE_READY campaign={request.CampaignId} " +
                 $"presentation={request.Presentation} source={request.DataRoot}");
+            FosNvLog.Info(
+                "route_ready",
+                $"campaign={request.CampaignId} presentation={request.Presentation} source={request.DataRoot}");
         }
         catch (Exception exception)
         {
             RuntimeLiveContentSource.Clear();
             launcher.Show();
             launcher.ReportLaunchFailure(exception.Message);
+            FosNvLog.Exception(
+                "route_fail",
+                exception,
+                $"campaign={request.CampaignId} presentation={request.Presentation} source={request.DataRoot}");
             GD.PushError($"OPENNV_GODOT_IN_PROCESS_ROUTE_FAIL {exception}");
         }
     }
