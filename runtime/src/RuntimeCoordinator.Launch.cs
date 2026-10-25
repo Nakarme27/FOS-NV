@@ -25,6 +25,8 @@ public partial class RuntimeCoordinator
                 LoadFallout2NativeInstall(
                     _nativeInstallation.InstallRoot,
                     RequireOption(_options, "save-path"));
+            else if (OS.GetName().Equals("Android", StringComparison.OrdinalIgnoreCase))
+                LoadNativeLiveStackAndroid();
             else
                 LoadNativeLiveStack();
             return true;
