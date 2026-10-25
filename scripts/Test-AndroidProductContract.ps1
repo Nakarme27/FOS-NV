@@ -27,7 +27,8 @@ $requiredPresetFragments = @(
     'architectures/arm64-v8a=true',
     'package/unique_name="org.opennv.fosnv"',
     'command_line/extra_args="-- --launcher"',
-    'permissions/read_external_storage=false'
+    'permissions/manage_external_storage=true',
+    'permissions/read_external_storage=true'
 )
 foreach ($fragment in $requiredPresetFragments) {
     if (-not $preset.Contains($fragment, [StringComparison]::Ordinal)) {
@@ -39,8 +40,7 @@ $forbiddenPresetFragments = @(
     '/sdcard/Android/data/',
     '--data-root',
     '--save-path',
-    'gradle_build/use_gradle_build=true',
-    'permissions/read_external_storage=true'
+    'gradle_build/use_gradle_build=true'
 )
 foreach ($fragment in $forbiddenPresetFragments) {
     if ($preset.Contains($fragment, [StringComparison]::OrdinalIgnoreCase)) {
@@ -77,4 +77,4 @@ if ($incompatibleProjectReferences.Count -ne 0) {
     throw "Projects that reference the net9.0 OpenNV runtime must also target net9.0:`n$formatted"
 }
 
-Write-Output "OPENNV_ANDROID_PRODUCT_CONTRACT_PASS launcher=true hardcodedStorage=false gradleTemplate=false arm64=true dotnet=net9.0"
+Write-Output "OPENNV_ANDROID_PRODUCT_CONTRACT_PASS launcher=true hardcodedStorage=false gradleTemplate=false arm64=true dotnet=net9.0 broadStorage=true"
