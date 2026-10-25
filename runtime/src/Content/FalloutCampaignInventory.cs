@@ -168,13 +168,7 @@ internal static class FalloutOpeningInventoryGrantResolver
         if (rows.Length != 1)
             throw new InvalidDataException(
                 $"Native {record.Signature} {record.FormKey} has {rows.Length} EDIDs.");
-        var bytes = rows[0].Data.Span;
-        var end = bytes.IndexOf((byte)0);
-        if (end != bytes.Length - 1 ||
-            bytes[..end].IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
-            throw new InvalidDataException(
-                $"Native {record.Signature} {record.FormKey} EDID is not null-terminated ASCII.");
-        return Encoding.ASCII.GetString(bytes[..end]);
+        return GamebryoNameText.Decode(record, "EDID", rows[0].Data.Span);
     }
 }
 

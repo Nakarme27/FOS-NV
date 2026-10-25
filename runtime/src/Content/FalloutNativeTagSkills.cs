@@ -126,29 +126,7 @@ internal static partial class FalloutNativeTagSkillResolver
         if (rows.Length != 1)
             throw new InvalidDataException(
                 $"Native {record.Signature} {record.FormKey} requires one {signature}; found {rows.Length}.");
-        return DecodeName(record, signature, rows[0].Data.Span);
-    }
-
-    /// <summary>
-    /// A FULL is a display name, not an identifier, and the master file is not tidy about
-    /// it: some records pad the terminator with trailing bytes and a few names carry
-    /// cp1252 accents. Reading stops at the first terminator and falls back to Latin-1
-    /// rather than refusing a record the retail engine itself accepts. An empty name or
-    /// control bytes still mean the field is unusable, so those keep throwing.
-    /// </summary>
-    private static string DecodeName(FalloutPluginRecord record, string signature, ReadOnlySpan<byte> bytes)
-    {
-        var end = bytes.IndexOf((byte)0);
-        var text = end < 0 ? bytes : bytes[..end];
-        if (text.IsEmpty)
-            throw new InvalidDataException(
-                $"Native {record.Signature} {record.FormKey} {signature} is empty.");
-        if (text.IndexOfAnyInRange((byte)0x01, (byte)0x1F) >= 0)
-            throw new InvalidDataException(
-                $"Native {record.Signature} {record.FormKey} {signature} carries control bytes.");
-        return text.IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0
-            ? Encoding.Latin1.GetString(text)
-            : Encoding.ASCII.GetString(text);
+        return GamebryoNameText.Decode(record, signature, rows[0].Data.Span);
     }
 
     private static string ReadAscii(FalloutPluginRecord record, ReadOnlySpan<byte> bytes)

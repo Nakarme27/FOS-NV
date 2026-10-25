@@ -383,13 +383,7 @@ internal static partial class FalloutNativeTraitFarewellResolver
 
     private static string ReadText(FalloutPluginRecord record, string signature)
     {
-        var bytes = Single(record, signature).Span;
-        var end = bytes.IndexOf((byte)0);
-        if (end != bytes.Length - 1 || end == 0 ||
-            bytes[..end].IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
-            throw new InvalidDataException(
-                $"Native {record.Signature} {record.FormKey} {signature} is not null-terminated ASCII.");
-        return Encoding.ASCII.GetString(bytes[..end]);
+        return GamebryoNameText.Decode(record, signature, Single(record, signature).Span);
     }
 
     private static string? TryReadEditorId(FalloutPluginRecord record)

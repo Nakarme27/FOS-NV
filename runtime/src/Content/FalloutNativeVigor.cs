@@ -232,13 +232,7 @@ internal static partial class FalloutNativeVigorResolver
 
     private static string ReadEditorId(FalloutPluginRecord record)
     {
-        var bytes = Single(record, "EDID").Span;
-        var end = bytes.IndexOf((byte)0);
-        if (end != bytes.Length - 1 || end == 0 ||
-            bytes[..end].IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
-            throw new InvalidDataException(
-                $"Native {record.Signature} {record.FormKey} EDID is not null-terminated ASCII.");
-        return Encoding.ASCII.GetString(bytes[..end]);
+        return GamebryoNameText.Decode(record, "EDID", Single(record, "EDID").Span);
     }
 
     [GeneratedRegex(@"\bShowLoveTesterMenuParams\s+(?<total>\d+)\s*;?", RegexOptions.IgnoreCase)]

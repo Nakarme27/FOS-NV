@@ -116,11 +116,6 @@ internal static class FalloutDoorTransitionResolver
         if (matches.Length != 1)
             throw new InvalidDataException(
                 $"Native {record.Signature} {record.FormKey} contains {matches.Length} EDID subrecords.");
-        var data = matches[0].Data.Span;
-        var terminator = data.IndexOf((byte)0);
-        if (terminator != data.Length - 1 || data[..terminator].IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
-            throw new InvalidDataException(
-                $"Native {record.Signature} {record.FormKey} EDID is not null-terminated ASCII.");
-        return Encoding.ASCII.GetString(data[..terminator]);
+        return GamebryoNameText.Decode(record, "EDID", matches[0].Data.Span);
     }
 }
