@@ -18,7 +18,7 @@ internal static class FosNvLog
 
     private static readonly object Gate = new();
     private static readonly Queue<string> PendingExternalLines = new();
-    private static bool _initialized;
+    private static bool _godotHostInitialized;
 
     internal static string PreferredLogDirectory =>
         OS.GetName().Equals("Android", StringComparison.OrdinalIgnoreCase)
@@ -31,9 +31,9 @@ internal static class FosNvLog
     {
         lock (Gate)
         {
-            if (_initialized)
+            if (_godotHostInitialized)
                 return;
-            _initialized = true;
+            _godotHostInitialized = true;
         }
 
         Info(
@@ -124,11 +124,18 @@ internal static class FosNvLog
 
     private static void Write(string level, string eventName, string message)
     {
-        InitializeIfNeeded();
         var sanitized = message.Replace("\r", string.Empty, StringComparison.Ordinal)
             .Replace("\n", "\n    ", StringComparison.Ordinal);
         var line = $"{DateTimeOffset.UtcNow:O} [{level}] {eventName} {sanitized}";
 
+        // Assembly-backed command-line probes have no Godot native bindings.
+        // Only an explicit Initialize call from the Godot host enables its sink.
+        if (!System.Threading.Volatile.Read(ref _godotHostInitialized))
+        {
+            Console.WriteLine($"FOSNV_LOG {line}");
+            lock (Gate) EnqueuePending(line);
+            return;
+        }
         GD.Print($"FOSNV_LOG {line}");
 
         lock (Gate)
@@ -138,16 +145,6 @@ internal static class FosNvLog
 
             EnqueuePending(line);
             TryWriteFallback(line);
-        }
-    }
-
-    private static void InitializeIfNeeded()
-    {
-        lock (Gate)
-        {
-            if (_initialized)
-                return;
-            _initialized = true;
         }
     }
 
