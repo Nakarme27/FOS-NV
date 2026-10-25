@@ -80,19 +80,30 @@ public partial class RuntimeCoordinator
             var launch = RuntimeLaunchRequest.Create(_options);
             RuntimeLaunchValidator.ValidatePreflight(_options);
             RuntimeLaunchValidator.ValidateContent(_options, launch);
+
+            var retainLauncherForAndroidNativeStartup =
+                AndroidStorageAccess.IsAndroid &&
+                _nativeInstallation.Game is NativeGame.Fallout3 or NativeGame.FalloutNewVegas;
+            if (retainLauncherForAndroidNativeStartup)
+                _androidLauncherFallback = launcher;
+
             launcher.Hide();
             if (!TryDispatchLaunch(launch))
                 throw new InvalidOperationException("The selected route has no in-process runtime owner.");
-            launcher.QueueFree();
+
+            if (!retainLauncherForAndroidNativeStartup)
+                launcher.QueueFree();
+
             GD.Print($"OPENNV_GODOT_IN_PROCESS_ROUTE_READY campaign={request.CampaignId} " +
                 $"presentation={request.Presentation} source={request.DataRoot}");
             FosNvLog.Info(
-                "route_ready",
+                retainLauncherForAndroidNativeStartup ? "route_dispatched" : "route_ready",
                 $"campaign={request.CampaignId} presentation={request.Presentation} source={request.DataRoot}");
         }
         catch (Exception exception)
         {
             RuntimeLiveContentSource.Clear();
+            _androidLauncherFallback = null;
             launcher.Show();
             launcher.ReportLaunchFailure(exception.Message);
             FosNvLog.Exception(
