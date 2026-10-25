@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Diagnostics;
 
 namespace OpenNV.Runtime.Presentation.Ui;
 
@@ -36,6 +37,7 @@ internal static class AndroidStorageAccess
         }
         catch (Exception exception)
         {
+            FosNvLog.Exception("android_storage_check_fail", exception);
             GD.PushWarning($"OPENNV_ANDROID_STORAGE_CHECK_FAIL {exception}");
             return false;
         }
@@ -48,7 +50,9 @@ internal static class AndroidStorageAccess
 
         try
         {
-            if (AndroidSdkInt() < 30)
+            var sdk = AndroidSdkInt();
+            FosNvLog.Info("android_storage_request", $"sdk={sdk}");
+            if (sdk < 30)
             {
                 OS.RequestPermission(ReadExternalStoragePermission);
                 return;
@@ -58,13 +62,16 @@ internal static class AndroidStorageAccess
         }
         catch (Exception primaryException)
         {
+            FosNvLog.Exception("android_storage_settings_primary_fail", primaryException);
             GD.PushWarning($"OPENNV_ANDROID_STORAGE_SETTINGS_PRIMARY_FAIL {primaryException}");
             try
             {
                 OpenAllFilesSettings(ManageAllFilesAction, includePackage: false);
+                FosNvLog.Info("android_storage_settings_fallback", "Opened global all-files-access settings.");
             }
             catch (Exception fallbackException)
             {
+                FosNvLog.Exception("android_storage_settings_fail", fallbackException);
                 GD.PushError($"OPENNV_ANDROID_STORAGE_SETTINGS_FAIL {fallbackException}");
             }
         }
