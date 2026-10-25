@@ -19,14 +19,33 @@ internal sealed record NativeGameInstallation(NativeGame Game, string InstallRoo
         if (string.IsNullOrWhiteSpace(selectedRoot))
             throw new ArgumentException("A game installation root is required.", nameof(selectedRoot));
 
-        var root = Path.GetFullPath(selectedRoot);
-        if (!Directory.Exists(root))
-            throw new DirectoryNotFoundException($"Selected game folder does not exist: {root}");
+        var selected = Path.GetFullPath(selectedRoot);
+        if (!Directory.Exists(selected))
+            throw new DirectoryNotFoundException($"Selected game folder does not exist: {selected}");
 
-        var dataRoot = FindDirectory(root, "Data");
-        var contentRoot = dataRoot ?? root;
-        var game = DetectGame(root, contentRoot);
-        return new NativeGameInstallation(game, root, contentRoot);
+        try
+        {
+            // Accept both the actual game root and its Data directory. Android users
+            // often navigate directly to Data because that is where the large retail
+            // payload lives. Keep InstallRoot normalized to the parent so INI and
+            // other installation-level lookups continue to work.
+            var selectedIsData = Path.GetFileName(selected)
+                .Equals("Data", StringComparison.OrdinalIgnoreCase);
+            var dataRoot = selectedIsData ? selected : FindDirectory(selected, "Data");
+            var installRoot = selectedIsData
+                ? Directory.GetParent(selected)?.FullName ?? selected
+                : selected;
+            var contentRoot = dataRoot ?? selected;
+            var game = DetectGame(installRoot, contentRoot);
+            return new NativeGameInstallation(game, installRoot, contentRoot);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            throw new UnauthorizedAccessException(
+                "Android can see the selected folder but FOS NV cannot read its files. " +
+                "Grant ‘All files access’ to FOS NV, return to the app, and select the folder again.",
+                exception);
+        }
     }
 
     private static NativeGame DetectGame(string installRoot, string contentRoot)
@@ -44,7 +63,9 @@ internal sealed record NativeGameInstallation(NativeGame Game, string InstallRoo
         if (ContainsFile(contentRoot, "Fallout3.esm"))
             return NativeGame.Fallout3;
         throw new InvalidDataException(
-            "The selected folder is not a recognized Fallout 1, Fallout 2, Fallout 3, or Fallout: New Vegas installation.");
+            $"No Fallout master file was found in '{contentRoot}'. For Fallout: New Vegas, " +
+            "select the game folder containing Data/FalloutNV.esm or select that Data folder itself. " +
+            "On Android, also make sure FOS NV has ‘All files access’. ");
     }
 
     private static string? FindDirectory(string root, string name) =>
