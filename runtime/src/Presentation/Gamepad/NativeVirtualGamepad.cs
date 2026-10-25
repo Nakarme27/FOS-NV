@@ -3,21 +3,7 @@ using System.Collections.Generic;
 
 namespace OpenNV.Runtime.Presentation.Gamepad;
 
-/// <summary>
-/// On-screen pad for touch devices, laid out like the Xbox 360 retail binding:
-/// left stick moves, right stick looks, A activates, B opens the Pip-Boy, X reloads,
-/// Y jumps, RT fires, RB grabs, Back saves and Start opens the pause menu.
-///
-/// The two triggers and LB carry no retail mechanic in this runtime — the source game
-/// maps them to V.A.T.S. and the first/third-person toggle, neither of which the port
-/// implements — so they hold the two actions the port does have and the keyboard cannot
-/// reach on a phone: LT is sprint, LB is cancel.
-///
-/// Buttons are delivered as the project's own flat_* actions through Input.ParseInputEvent,
-/// so every gameplay path keeps reading Input exactly as it does for a keyboard. The
-/// sticks are exposed as vectors instead, because a digital action cannot express half
-/// deflection and Input.GetVector only reports the eight action directions.
-/// </summary>
+/// <summary>Multitouch adapter for the native player's actions and modal menu navigation.</summary>
 internal sealed partial class NativeVirtualGamepad : Control
 {
     private const float DeadZone = 0.18f;
@@ -42,10 +28,10 @@ internal sealed partial class NativeVirtualGamepad : Control
         (Zone.X, "flat_reload"),
         (Zone.Y, "flat_jump"),
         (Zone.TriggerRight, "flat_fire"),
-        (Zone.TriggerLeft, "flat_sprint"),
-        (Zone.BumperRight, "flat_grab"),
-        (Zone.BumperLeft, "flat_cancel"),
-        (Zone.Back, "flat_save"),
+        (Zone.TriggerLeft, "flat_aim"),
+        (Zone.BumperRight, "flat_unavailable_vats"),
+        (Zone.BumperLeft, "flat_view"),
+        (Zone.Back, "flat_unavailable_wait"),
     ];
 
     private readonly Dictionary<int, Zone> _touches = new();
@@ -54,6 +40,16 @@ internal sealed partial class NativeVirtualGamepad : Control
     private Vector2 _left = Vector2.Zero;
     private Vector2 _right = Vector2.Zero;
 
+    internal System.Func<bool>? GameplayInput { get; set; }
+    private bool Gameplay => GameplayInput?.Invoke() == true;
+    private bool _wasGameplay;
+    private bool _previousMouseEmulation;
+    private int? _pointerFinger;
+    private Vector2 _pointerPosition;
+    internal event System.Action? InputCanceled;
+    private string? _menuDirection;
+    private double _menuRepeat;
+    private readonly Queue<(Zone Zone, bool Pressed)> _edges = new();
     private float _height;
     private float _stickRadius;
     private float _knobRadius;
@@ -68,9 +64,9 @@ internal sealed partial class NativeVirtualGamepad : Control
     private Vector2 _triggerLeft;
     private Vector2 _triggerRight;
     private Vector2 _bumperLeft;
-    private Vector2 _bumperRight;
+
     private Vector2 _start;
-    private Vector2 _back;
+
 
     /// <summary>The pad currently in the tree, or null outside gameplay.</summary>
     internal static NativeVirtualGamepad? Current { get; private set; }
@@ -86,6 +82,9 @@ internal sealed partial class NativeVirtualGamepad : Control
     public override void _Ready()
     {
         Current = this;
+        _wasGameplay = Gameplay;
+        _previousMouseEmulation = Input.EmulateMouseFromTouch;
+        Input.EmulateMouseFromTouch = false;
         SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Ignore;
         // A node built in C# carries no Godot script, so the virtual callbacks are not
@@ -101,19 +100,21 @@ internal sealed partial class NativeVirtualGamepad : Control
     public override void _ExitTree()
     {
         if (Current == this) Current = null;
-        foreach (var zone in new List<Zone>(_held)) Release(zone);
+        ResetInput();
+        Input.EmulateMouseFromTouch = _previousMouseEmulation;
     }
 
     public override void _Notification(int what)
     {
-        if (what == NotificationResized) RebuildLayout();
+        if (what == NotificationResized) { ResetInput(); RebuildLayout(); }
+        if (what is (int)NotificationApplicationFocusOut or (int)NotificationApplicationPaused) ResetInput();
     }
 
     private void RebuildLayout()
     {
         var size = GetViewportRect().Size;
         if (size.X < 2.0f || size.Y < 2.0f) return;
-        _height = size.Y;
+        _height = Mathf.Min(size.Y, size.X / 1.8f);
         _stickRadius = _height * 0.155f;
         _knobRadius = _stickRadius * KnobFraction;
         _buttonRadius = _height * ButtonFraction;
@@ -121,14 +122,14 @@ internal sealed partial class NativeVirtualGamepad : Control
         _menuRadius = _height * MenuFraction;
         _buttonGap = _height * ButtonGapFraction;
         _labelSize = Mathf.Max(10, (int)(_height * LabelFraction));
-        _leftCenter = new Vector2(_height * 0.28f, _height * 0.74f);
-        _rightCenter = new Vector2(size.X - _height * 0.95f, _height * 0.74f);
-        _faceCenter = new Vector2(size.X - _height * 0.26f, _height * 0.46f);
+        _leftCenter = new Vector2(_height * 0.28f, size.Y - _height * 0.26f);
+        _rightCenter = new Vector2(size.X - _height * 0.95f, size.Y - _height * 0.26f);
+        _faceCenter = new Vector2(size.X - _height * 0.26f, size.Y - _height * 0.54f);
         _triggerLeft = new Vector2(_height * 0.44f, _height * 0.10f);
         _triggerRight = new Vector2(size.X - _height * 0.18f, _height * 0.16f);
         _bumperLeft = new Vector2(_height * 0.20f, _height * 0.16f);
-        _bumperRight = new Vector2(size.X - _height * 0.46f, _height * 0.10f);
-        _back = new Vector2(size.X * 0.44f, _height * 0.09f);
+
+
         _start = new Vector2(size.X * 0.56f, _height * 0.09f);
         QueueRedraw();
     }
@@ -136,20 +137,48 @@ internal sealed partial class NativeVirtualGamepad : Control
     public override void _Input(InputEvent @event)
     {
         if (!IsVisibleInTree()) return;
+        if (Gameplay && @event is InputEventMouse { Device: -1 })
+        { GetViewport().SetInputAsHandled(); return; }
         switch (@event)
         {
+            case InputEventScreenTouch { Canceled: true }:
+                ResetInput(); GetViewport().SetInputAsHandled(); break;
             case InputEventScreenTouch { Pressed: true } touch:
-                if (ZoneAt(touch.Position) is not { } pressed) return;
+                if (ZoneAt(touch.Position) is not { } pressed)
+                {
+                    if (!Gameplay && _pointerFinger is null)
+                    {
+                        _pointerFinger = touch.Index; _pointerPosition = touch.Position;
+                        PointerButton(true);
+                    }
+                    GetViewport().SetInputAsHandled(); return;
+                }
+                if ((pressed is Zone.LeftStick or Zone.RightStick) && _touches.ContainsValue(pressed))
+                { GetViewport().SetInputAsHandled(); return; }
                 _touches[touch.Index] = pressed;
                 Begin(pressed, touch.Position);
                 GetViewport().SetInputAsHandled();
                 break;
             case InputEventScreenTouch touch:
+                if (_pointerFinger == touch.Index)
+                { PointerButton(false); _pointerFinger = null; }
                 if (!_touches.Remove(touch.Index, out var released)) return;
-                Release(released);
+                if (!_touches.ContainsValue(released)) Release(released);
                 GetViewport().SetInputAsHandled();
                 break;
             case InputEventScreenDrag drag:
+                if (_pointerFinger == drag.Index)
+                {
+                    using var motion = new InputEventMouseMotion
+                    {
+                        Position = drag.Position,
+                        GlobalPosition = drag.Position,
+                        Relative = drag.Position - _pointerPosition,
+                        ButtonMask = MouseButtonMask.Left,
+                    };
+                    _pointerPosition = drag.Position;
+                    Input.ParseInputEvent(motion); GetViewport().SetInputAsHandled(); return;
+                }
                 if (!_touches.TryGetValue(drag.Index, out var dragged)) return;
                 Drag(dragged, drag.Position);
                 GetViewport().SetInputAsHandled();
@@ -159,6 +188,14 @@ internal sealed partial class NativeVirtualGamepad : Control
 
     private Zone? ZoneAt(Vector2 position)
     {
+        if (!Gameplay)
+        {
+            if (position.DistanceTo(_leftCenter) <= _stickRadius) return Zone.LeftStick;
+            if (position.DistanceTo(ButtonCenter(Zone.A)) <= _buttonRadius) return Zone.A;
+            if (position.DistanceTo(ButtonCenter(Zone.B)) <= _buttonRadius) return Zone.B;
+            if (position.DistanceTo(_start) <= _menuRadius) return Zone.Start;
+            return null;
+        }
         if (position.DistanceTo(_leftCenter) <= _stickRadius) return Zone.LeftStick;
         if (position.DistanceTo(_rightCenter) <= _stickRadius) return Zone.RightStick;
         if (position.DistanceTo(ButtonCenter(Zone.Y)) <= _buttonRadius) return Zone.Y;
@@ -167,10 +204,10 @@ internal sealed partial class NativeVirtualGamepad : Control
         if (position.DistanceTo(ButtonCenter(Zone.B)) <= _buttonRadius) return Zone.B;
         if (position.DistanceTo(_triggerRight) <= _triggerRadius) return Zone.TriggerRight;
         if (position.DistanceTo(_triggerLeft) <= _triggerRadius) return Zone.TriggerLeft;
-        if (position.DistanceTo(_bumperRight) <= _triggerRadius) return Zone.BumperRight;
+
         if (position.DistanceTo(_bumperLeft) <= _triggerRadius) return Zone.BumperLeft;
         if (position.DistanceTo(_start) <= _menuRadius) return Zone.Start;
-        if (position.DistanceTo(_back) <= _menuRadius) return Zone.Back;
+
         return null;
     }
 
@@ -186,7 +223,7 @@ internal sealed partial class NativeVirtualGamepad : Control
     private void Begin(Zone zone, Vector2 position)
     {
         if (zone is Zone.LeftStick or Zone.RightStick) Drag(zone, position);
-        else if (zone == Zone.Start) PauseRequested?.Invoke();
+        else if (zone == Zone.Start) _edges.Enqueue((zone, true));
         else if (_held.Add(zone)) SetAction(zone, true);
         QueueRedraw();
     }
@@ -225,15 +262,79 @@ internal sealed partial class NativeVirtualGamepad : Control
         QueueRedraw();
     }
 
-    private void SetAction(Zone zone, bool pressed)
+    private void SetAction(Zone zone, bool pressed) => _edges.Enqueue((zone, pressed));
+
+    private static void EmitAction(Zone zone, bool pressed)
     {
         foreach (var (target, action) in ActionButtons)
         {
-            if (target != zone) continue;
-            Input.ParseInputEvent(new InputEventAction { Action = action, Pressed = pressed });
-            GD.Print($"OPENNV_VIRTUAL_PAD button={action} pressed={pressed}");
+            if (target != zone || action.StartsWith("flat_unavailable_", System.StringComparison.Ordinal)) continue;
+            using var input = new InputEventAction { Action = action, Pressed = pressed };
+            Input.ParseInputEvent(input);
             return;
         }
+    }
+
+    private void PointerButton(bool pressed)
+    {
+        using var input = new InputEventMouseButton
+        {
+            Position = _pointerPosition,
+            GlobalPosition = _pointerPosition,
+            ButtonIndex = MouseButton.Left,
+            Pressed = pressed,
+        };
+        Input.ParseInputEvent(input);
+    }
+
+    internal void ResetInput()
+    {
+        InputCanceled?.Invoke();
+        if (_pointerFinger is not null) { _pointerPosition = new(-1, -1); PointerButton(false); }
+        _pointerFinger = null;
+        _edges.Clear();
+        foreach (var zone in _held) EmitAction(zone, false);
+        _held.Clear(); _touches.Clear();
+        _left = _right = Vector2.Zero;
+        _menuDirection = null; _menuRepeat = 0;
+        QueueRedraw();
+    }
+
+    private static void MenuKey(Key key)
+    {
+        using var down = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true };
+        using var up = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false };
+        Input.ParseInputEvent(down); Input.ParseInputEvent(up);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_wasGameplay != Gameplay)
+        {
+            ResetInput(); _wasGameplay = Gameplay; QueueRedraw();
+        }
+        while (_edges.TryDequeue(out var edge))
+        {
+            if (!Gameplay)
+            {
+                if (edge.Pressed) MenuKey(edge.Zone == Zone.A ? Key.Enter : Key.Escape);
+            }
+            else if (edge.Zone == Zone.Start)
+            {
+                if (edge.Pressed) PauseRequested?.Invoke();
+            }
+            else EmitAction(edge.Zone, edge.Pressed);
+        }
+        if (Gameplay) return;
+        var direction = _left.Length() < .5f ? null : Mathf.Abs(_left.X) > Mathf.Abs(_left.Y)
+            ? (_left.X < 0 ? "Left" : "Right") : (_left.Y < 0 ? "Up" : "Down");
+        _menuRepeat -= delta;
+        if (direction is not null && (direction != _menuDirection || _menuRepeat <= 0))
+        {
+            MenuKey(System.Enum.Parse<Key>(direction));
+            _menuRepeat = direction == _menuDirection ? .12 : .35;
+        }
+        _menuDirection = direction;
     }
 
     public override void _Draw()
@@ -241,22 +342,21 @@ internal sealed partial class NativeVirtualGamepad : Control
         if (_height < 1.0f) return;
         var font = ThemeDB.FallbackFont;
         DrawStick(_leftCenter, _left);
-        DrawStick(_rightCenter, _right);
-        DrawFace(Zone.Y, "Y", font);
+        if (Gameplay) DrawStick(_rightCenter, _right);
+        if (Gameplay) DrawFace(Zone.Y, "Y", font);
         DrawFace(Zone.A, "A", font);
-        DrawFace(Zone.X, "X", font);
+        if (Gameplay) DrawFace(Zone.X, "X", font);
         DrawFace(Zone.B, "B", font);
-        DrawRound(_bumperLeft, _triggerRadius, _held.Contains(Zone.BumperLeft));
-        DrawRound(_bumperRight, _triggerRadius, _held.Contains(Zone.BumperRight));
-        DrawRound(_triggerLeft, _triggerRadius, _held.Contains(Zone.TriggerLeft));
-        DrawRound(_triggerRight, _triggerRadius, _held.Contains(Zone.TriggerRight));
-        DrawRound(_back, _menuRadius, _held.Contains(Zone.Back));
+        if (Gameplay)
+        {
+            DrawRound(_bumperLeft, _triggerRadius, _held.Contains(Zone.BumperLeft));
+            DrawRound(_triggerLeft, _triggerRadius, _held.Contains(Zone.TriggerLeft));
+            DrawRound(_triggerRight, _triggerRadius, _held.Contains(Zone.TriggerRight));
+            DrawLabel(_bumperLeft, "LB", font);
+            DrawLabel(_triggerLeft, "LT", font);
+            DrawLabel(_triggerRight, "RT", font);
+        }
         DrawRound(_start, _menuRadius, false);
-        DrawLabel(_bumperLeft, "LB", font);
-        DrawLabel(_bumperRight, "RB", font);
-        DrawLabel(_triggerLeft, "LT", font);
-        DrawLabel(_triggerRight, "RT", font);
-        DrawLabel(_back, "▣", font);
         DrawLabel(_start, "▶", font);
     }
 

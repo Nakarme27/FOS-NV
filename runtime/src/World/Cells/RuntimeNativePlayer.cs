@@ -101,6 +101,7 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
     internal void SetModalInput(bool modal)
     {
         _modalInput = modal;
+        _gamepad?.ResetInput();
         if (modal)
         {
             _weaponTriggerHeld = false;
@@ -212,7 +213,7 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
         // to tell a stick deflection from a button press.
         if (DisplayServer.GetName() != "headless" && OS.GetName() is not ("Android" or "iOS"))
             TouchPointerPolicy.Capture();
-        if (OS.GetName() is "Android" or "iOS") AttachVirtualGamepad();
+        if (OS.GetName() is "Android" or "iOS") Callable.From(AttachVirtualGamepad).CallDeferred();
     }
 
     /// <summary>
@@ -222,12 +223,19 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
     /// </summary>
     private void AttachVirtualGamepad()
     {
-        if (_gamepad is not null) return;
-        var layer = new CanvasLayer { Layer = 8 };
+        if (_gamepad is not null || _xr is not null) return;
+        var layer = new CanvasLayer { Layer = 190, ProcessMode = ProcessModeEnum.Always };
         AddChild(layer);
         _gamepad = new NativeVirtualGamepad();
-        layer.AddChild(_gamepad);
+        _gamepad.InputCanceled += () =>
+        {
+            _reloadPressed = false; _holdHandled = true;
+            _weaponTriggerHeld = false; _aiming = false;
+            _pendingShotCount = 0; CancelWeaponAction();
+        };
+        _gamepad.GameplayInput = () => !_modalInput && !GetTree().Paused && _xr is null && IsDefeated?.Invoke() != true;
         _gamepad.PauseRequested += () => OpenPauseMenu?.Invoke();
+        layer.AddChild(_gamepad);
         GD.Print("OPENNV_VIRTUAL_PAD attached");
     }
 
@@ -328,7 +336,7 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
                     input.MoveBackward.Action,
                     input.MoveForward.Action))
             : Vector2.Zero;
-        if (_gamepad is not null && !_modalInput && _lookingEnabled &&
+        if (alive && _gamepad is not null && !_modalInput && _lookingEnabled &&
             _gamepad.Look.LengthSquared() > 0.0f)
             ApplyLookRadians(
                 -_gamepad.Look.X * TouchLookRadiansPerSecond * (float)delta,

@@ -44,7 +44,25 @@ jobs:
 
       - name: Validate clean Godot runtime
         shell: pwsh
-        run: ./scripts/Test-GodotRuntime.ps1 -Godot '${{ steps.godot.outputs.path }}'
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'runtime-gate.log'
+          try {
+            ./scripts/Test-GodotRuntime.ps1 -Godot '${{ steps.godot.outputs.path }}' *> $log
+            if ($LASTEXITCODE -ne 0) { throw 'Runtime gate failed.' }
+          } catch {
+            $_ | Out-String | Add-Content -LiteralPath $log
+            throw
+          } finally {
+            if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 200 }
+          }
+
+      - name: Retain complete runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-gate-log
+          path: ${{ runner.temp }}/runtime-gate.log
+          if-no-files-found: ignore
 
   desktop-launcher:
     name: Validate desktop launcher (${{ matrix.label }})

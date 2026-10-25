@@ -7,6 +7,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Support/FosNvLogContractAdapter.cs" Link="FosNvLogContractAdapter.cs" />
     <Compile Include="..\..\runtime\src\RuntimeLaunchRequest.cs" Link="RuntimeLaunchRequest.cs" />
     <Compile Include="..\..\runtime\src\RuntimeLaunchValidator.cs" Link="RuntimeLaunchValidator.cs" />
     <Compile Include="..\..\runtime\src\Content\NativeGameInstallation.cs" Link="NativeGameInstallation.cs" />
