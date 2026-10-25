@@ -15,6 +15,13 @@ public partial class RuntimeCoordinator
         SetMeta("opennv_product_entry", "godot-native-launcher-v1");
         GD.Print("OPENNV_GODOT_LAUNCHER_READY source=live-installation-picker " +
             "routes=manifest-backed profiles=godot-native");
+
+        if (!AndroidStorageAccess.HasRequiredAccess())
+        {
+            launcher.ReportLaunchFailure(AndroidStorageAccess.RequiredAccessMessage);
+            AndroidStorageAccess.RequestRequiredAccess();
+        }
+
         DismissLoadingScreen();
     }
 
@@ -24,6 +31,12 @@ public partial class RuntimeCoordinator
     {
         try
         {
+            if (!AndroidStorageAccess.HasRequiredAccess())
+            {
+                AndroidStorageAccess.RequestRequiredAccess();
+                throw new UnauthorizedAccessException(AndroidStorageAccess.RequiredAccessMessage);
+            }
+
             _options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["data-root"] = request.DataRoot,
