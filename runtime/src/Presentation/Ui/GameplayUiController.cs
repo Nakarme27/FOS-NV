@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 using OpenNV.Runtime.SceneGraph;
 
@@ -192,12 +193,12 @@ internal partial class GameplayUiController : CanvasLayer
         if (_pipBoyPanel.Visible)
         {
             _activePanel = GameplayUiPanel.Status;
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
             Refresh();
         }
         else if (!_useXr && DisplayServer.GetName() != "headless")
         {
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
         }
     }
 
@@ -215,7 +216,7 @@ internal partial class GameplayUiController : CanvasLayer
         if (_desktopHud is not null)
             _desktopHud.Visible = _showHud && _gameplayEnabled;
         if (!_useXr && DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
     }
 
     internal void SetGameplayVisible(bool visible)

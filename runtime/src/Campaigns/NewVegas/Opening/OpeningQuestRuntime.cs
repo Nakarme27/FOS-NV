@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Presentation.CharacterCreation;
 using OpenNV.Runtime.SceneGraph;
 using OpenNV.Runtime.InputSystem;
@@ -1274,7 +1275,7 @@ internal partial class OpeningQuestRuntime : CanvasLayer
         direction = direction.Normalized();
         var desiredYaw = MathF.Atan2(-direction.X, -direction.Z);
         var yawDelta = Mathf.AngleDifference(_loaded.Player.GlobalRotation.Y, desiredYaw);
-        Input.MouseMode = Input.MouseModeEnum.Captured;
+        TouchPointerPolicy.Capture();
         Input.ParseInputEvent(new InputEventMouseMotion
         {
             Relative = new Vector2(

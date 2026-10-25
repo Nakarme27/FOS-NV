@@ -116,7 +116,9 @@ internal partial class NativeOwnedNameMenu : Control
     public override void _Ready()
     {
         Layout();
-        _entry.GrabFocus();
+        // Focusing a LineEdit opens the Android soft keyboard, which covers half the screen
+        // the instant the cell appears. On touch devices the player taps the field himself.
+        if (OS.GetName() is not ("Android" or "iOS")) _entry.GrabFocus();
         _entry.CaretColumn = _entry.Text.Length;
     }
 

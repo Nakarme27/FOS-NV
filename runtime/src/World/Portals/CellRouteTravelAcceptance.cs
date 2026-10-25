@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 
 using OpenNV.Runtime.Diagnostics.Acceptance;
@@ -62,7 +63,7 @@ internal static class CellRouteTravelAcceptance
                 Input.ParseInputEvent(DesktopInputMap.CreateEvent(binding, false));
             foreach (var binding in input.MouseBindings)
                 Input.ParseInputEvent(DesktopInputMap.CreateEvent(binding, false));
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
         }
     }
 

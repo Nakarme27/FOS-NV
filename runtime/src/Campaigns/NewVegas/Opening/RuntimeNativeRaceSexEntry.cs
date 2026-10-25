@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Formats.Gamebryo;
 using OpenNV.Runtime.Presentation.Ui;
@@ -99,7 +100,7 @@ internal partial class RuntimeNativeRaceSexEntry : CanvasLayer
         GetViewport().SizeChanged += Resize;
         _pausedTree = GetTree(); _previousPause = _pausedTree.Paused; _pausedTree.Paused = true;
         _background = imageSpace?.BeginMenuBackground(records, FalloutMenuBackgroundKind.Popup);
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         RefreshPreview(); ShowPage();
         GD.Print($"OPENNV_NATIVE_CREATION_PRESENTED pages={_creation.Headers.Count} controls={_creation.Controls.Controls.Count} source=owned-nif-xml-fnt-ctl-player-records parity=unverified");
     }

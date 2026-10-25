@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Gameplay.State;
 using OpenNV.Runtime.Presentation.Ui;
@@ -97,7 +98,7 @@ public partial class RuntimeCoordinator
             CloseNativeSessionMenu, SaveNativeManualSlot, LoadNativeSelectedSlot,
             () => RestartNativeSession(false), () => GetTree().Quit(), DescribeNativeSave);
         AddChild(_nativeSessionLayer); _nativeSessionLayer.AddChild(_nativeSessionMenu);
-        _nativePlayer?.SetModalInput(true); Input.MouseMode = Input.MouseModeEnum.Visible;
+        _nativePlayer?.SetModalInput(true); TouchPointerPolicy.Release();
         GetTree().Paused = true;
         GD.Print($"OPENNV_NATIVE_SESSION_MENU_OPEN browser={showSaves} xr={_nativeXr is not null}");
     }

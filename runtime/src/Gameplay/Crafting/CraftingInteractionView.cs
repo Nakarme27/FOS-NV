@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 namespace OpenNV.Runtime.Gameplay.Crafting;
 
@@ -61,7 +62,7 @@ internal partial class CraftingInteractionView : CanvasLayer
         _root.Visible = true;
         GetTree().Paused = true;
         if (!_useXr && DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
     }
 
     internal void Refresh()
@@ -100,7 +101,7 @@ internal partial class CraftingInteractionView : CanvasLayer
         _exit = null;
         GetTree().Paused = _previousPauseState;
         if (!_useXr && DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)

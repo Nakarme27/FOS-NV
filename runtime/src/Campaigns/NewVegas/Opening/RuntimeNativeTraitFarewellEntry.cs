@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.World.Cells;
 
@@ -53,7 +54,7 @@ internal partial class RuntimeNativeTraitEntry : CanvasLayer
             Text = "Winning playable PERK identities • functional OpenNV presentation",
             HorizontalAlignment = HorizontalAlignment.Center,
         });
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         Refresh();
         confirm.GrabFocus();
     }

@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Globalization;
 using System.Xml.Linq;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Formats.Gamebryo;
 
@@ -118,7 +119,7 @@ internal sealed partial class NativeGamebryoStartMenu : Control
 
     public override void _Ready()
     {
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         Layout();
         _music = new AudioStreamPlayer { Name = "OwnedMainTitleMusic", Stream = NativeOwnedMediaLoader.LoadAudio("music\\" + _settings.Require("General", "SMainMenuMusicTrack")) };
         _music.AddToGroup("opennv_music");

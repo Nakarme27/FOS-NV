@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Presentation.Ui;
 using OpenNV.Runtime.World.Cells;
@@ -88,7 +89,7 @@ internal partial class RuntimeNativeConversation : Node
             _speakerName = FalloutDialogueTopic.Text(npc.ReadSubrecords().Single(field => field.Signature == "FULL").Data.Span);
             _layer = new CanvasLayer { Layer = 95 }; AddChild(_layer);
             _menu = new(() => _speech.SkipResponse(), Fail); _layer.AddChild(_menu);
-            _player.SetModalInput(true); Input.MouseMode = Input.MouseModeEnum.Visible;
+            _player.SetModalInput(true); TouchPointerPolicy.Release();
             _conversation.Start(npc.FormKey, request.Topic ?? FalloutDialogueTopic.Find(_records, "DIAL", "GREETING").FormKey);
             _recordTalkedToPlayer?.Invoke(_speaker);
             _facingSpeaker = GetTree().Root.FindChildren("*", "", true, false).OfType<Node3D>()
@@ -109,7 +110,7 @@ internal partial class RuntimeNativeConversation : Node
         {
             ReleaseFacing();
             _layer?.QueueFree(); _layer = null; _menu = null;
-            _player.SetModalInput(false); Input.MouseMode = Input.MouseModeEnum.Captured;
+            _player.SetModalInput(false); TouchPointerPolicy.Capture();
             var completed = _completed; _completed = null; completed?.Invoke();
             return;
         }
@@ -136,7 +137,7 @@ internal partial class RuntimeNativeConversation : Node
         ReleaseFacing();
         _layer?.QueueFree(); _layer = null; _menu = null;
         _player.SetModalInput(false);
-        Input.MouseMode = Input.MouseModeEnum.Captured;
+        TouchPointerPolicy.Capture();
         GD.PushError($"OPENNV_NATIVE_CONVERSATION_DIVERGENCE speaker={_speaker}: {error.Message}");
     }
 }

@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Gameplay.State;
 using OpenNV.Runtime.World.Cells;
@@ -402,7 +403,7 @@ internal partial class RuntimeNativeOpeningStageDriver : Node
             _nameEntry = null;
         }
         if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
         GD.Print(
             $"OPENNV_NATIVE_NAME_ACCEPTED characters={_playerName.Length} " +
             "source=configured-player-input");
@@ -447,7 +448,7 @@ internal partial class RuntimeNativeOpeningStageDriver : Node
             _raceSexEntry = null;
         }
         if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
         GD.Print(
             $"OPENNV_NATIVE_RACESEX_ACCEPTED female={_character.Female} " +
             $"race={_character.RaceEditorId}/{_character.RaceRuntimeFormId:x8} " +
@@ -483,7 +484,7 @@ internal partial class RuntimeNativeOpeningStageDriver : Node
         }
         _player.SetModalInput(false);
         if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
         GD.Print(
             $"OPENNV_NATIVE_SPECIAL_ACCEPTED total={_special.Values.Sum()} " +
             $"values={string.Join(',', _special.Values)} stage={_machine.Stage} " +
@@ -529,7 +530,7 @@ internal partial class RuntimeNativeOpeningStageDriver : Node
         }
         _player.SetModalInput(false);
         if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
         GD.Print(
             $"OPENNV_NATIVE_TAG_SKILLS_ACCEPTED skills=" +
             $"{string.Join(',', _tagSkills.Select(value => value.EditorId))} " +
@@ -576,7 +577,7 @@ internal partial class RuntimeNativeOpeningStageDriver : Node
         }
         _player.SetModalInput(false);
         if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
         GD.Print(
             $"OPENNV_NATIVE_TRAITS_ACCEPTED traits=" +
             $"{string.Join(',', _traits.Select(value => value.EditorId))} " +

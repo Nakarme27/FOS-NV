@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Presentation.Ui;
 using OpenNV.Runtime.Presentation.Rendering;
@@ -38,7 +39,7 @@ internal partial class RuntimeNativeVigorEntry : CanvasLayer
         _previousPause = _pausedTree.Paused;
         _pausedTree.Paused = true;
         _background = imageSpace?.BeginMenuBackground(records, FalloutMenuBackgroundKind.Popup);
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
     }
 
     private void ReleaseBackground()

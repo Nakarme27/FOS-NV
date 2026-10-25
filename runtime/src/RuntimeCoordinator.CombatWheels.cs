@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Presentation.Ui;
 
 namespace OpenNV.Runtime;
@@ -28,7 +29,7 @@ public partial class RuntimeCoordinator
         GetTree().Paused = true;
         if (_nativeXr is null)
         {
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
             GetViewport().WarpMouse(GetViewport().GetVisibleRect().Size * .5f);
         }
         GD.Print($"OPENNV_COMBAT_WHEEL_OPEN kind={(consumables ? "aid" : "weapon")} xr={_nativeXr is not null}");

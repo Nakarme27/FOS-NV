@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 
 using OpenNV.Runtime.Diagnostics.Acceptance;
@@ -182,7 +183,7 @@ internal static class PipBoyVisualAcceptance
             Input.ParseInputEvent(DesktopInputMap.CreateEvent(input.PipBoy, false));
             Input.ParseInputEvent(DesktopInputMap.CreateEvent(input.Cancel, false));
             loaded.Session.ClosePipBoy();
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
         }
     }
 }

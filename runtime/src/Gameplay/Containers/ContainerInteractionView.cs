@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 
 namespace OpenNV.Runtime.Gameplay.Containers;
@@ -53,7 +54,7 @@ internal partial class ContainerInteractionView : CanvasLayer
         _root.Visible = true;
         GetTree().Paused = true;
         if (!_useXr && DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
     }
 
     internal void Refresh(
@@ -133,7 +134,7 @@ internal partial class ContainerInteractionView : CanvasLayer
         _exitAction = null;
         GetTree().Paused = _previousPauseState;
         if (!_useXr && DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)

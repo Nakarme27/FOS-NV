@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 
 namespace OpenNV.Runtime.Campaigns.NewVegas.Opening;
@@ -63,7 +64,7 @@ internal partial class RuntimeNativeTagSkillEntry : CanvasLayer
             Text = "Winning AVIF identities • functional OpenNV presentation",
             HorizontalAlignment = HorizontalAlignment.Center,
         });
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         Refresh();
     }
 

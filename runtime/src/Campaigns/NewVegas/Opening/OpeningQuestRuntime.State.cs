@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Presentation.CharacterCreation;
 
 
@@ -1532,7 +1533,7 @@ internal partial class OpeningQuestRuntime
         _canvas.AddChild(root);
         _activeModal = root;
         _loaded.Player.SetControlPolicy(false, false, false, false, false);
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         return root;
     }
 

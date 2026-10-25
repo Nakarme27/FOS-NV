@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Diagnostics;
 
@@ -118,7 +119,7 @@ internal sealed partial class NativeGodotLauncher : Control
         Name = "OpenNVGodotLauncher";
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         ProcessMode = ProcessModeEnum.Always;
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         GetWindow().MinSize = new Vector2I(1060, 700);
 
         BuildBackground();

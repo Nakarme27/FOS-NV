@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.World.Portals;
 
 
@@ -169,7 +170,7 @@ internal partial class CellPlayer : CharacterBody3D
         if (_useXr || _useClassicDiorama || DisplayServer.GetName() == "headless")
             return;
         Input.WarpMouse(GetViewport().GetVisibleRect().GetCenter());
-        Input.MouseMode = Input.MouseModeEnum.Captured;
+        TouchPointerPolicy.Capture();
     }
 
     internal void ConfigureJamJvsSprint(JamJvsSprintContract sprint)
@@ -319,7 +320,7 @@ internal partial class CellPlayer : CharacterBody3D
         if (!_useXr && !_useClassicDiorama)
             CaptureDesktopPointer();
         else if (_useClassicDiorama)
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
     }
 
     public override void _Process(double delta)
@@ -1144,7 +1145,7 @@ internal partial class CellPlayer : CharacterBody3D
         {
             if (_activePool is not null)
                 ExitPool();
-            Input.MouseMode = Input.MouseModeEnum.Visible;
+            TouchPointerPolicy.Release();
         }
         if (_lookEnabled && Input.IsActionJustPressed(input.CaptureMouse.Action))
             CaptureDesktopPointer();

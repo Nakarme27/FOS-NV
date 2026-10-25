@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 
 using OpenNV.Runtime.Formats.Gamebryo;
@@ -703,7 +704,7 @@ internal sealed partial class Fo3Cg01ToddlerPlayer : CharacterBody3D
     public override void _Ready()
     {
         if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)

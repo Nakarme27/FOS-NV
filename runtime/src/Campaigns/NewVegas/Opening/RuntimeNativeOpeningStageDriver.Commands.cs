@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Formats.Gamebryo;
 using OpenNV.Runtime.Gameplay.State;
@@ -206,7 +207,7 @@ internal partial class RuntimeNativeOpeningStageDriver
         AddChild(layer);
         layer.AddChild(menu);
         _player.SetModalInput(true);
-        if (DisplayServer.GetName() != "headless") Input.MouseMode = Input.MouseModeEnum.Visible;
+        if (DisplayServer.GetName() != "headless") TouchPointerPolicy.Release();
         GD.Print($"OPENNV_NATIVE_RECIPE_MENU_OPEN category={category.Form} recipes={recipes.Count} source=RCCT-RCPE owner=shared-inventory parity=unverified");
     }
 
@@ -243,7 +244,7 @@ internal partial class RuntimeNativeOpeningStageDriver
         _recipeLayer = null;
         _recipeMenu = null;
         _player.SetModalInput(false);
-        if (DisplayServer.GetName() != "headless") Input.MouseMode = Input.MouseModeEnum.Captured;
+        if (DisplayServer.GetName() != "headless") TouchPointerPolicy.Capture();
     }
 
     private void OpenBarterMenu(FalloutFormKey actorReference, int discount)
@@ -286,7 +287,7 @@ internal partial class RuntimeNativeOpeningStageDriver
         _barterLayer = layer; _barterMenu = menu;
         AddChild(layer); layer.AddChild(menu);
         _player.SetModalInput(true);
-        if (DisplayServer.GetName() != "headless") Input.MouseMode = Input.MouseModeEnum.Visible;
+        if (DisplayServer.GetName() != "headless") TouchPointerPolicy.Release();
         GD.Print($"OPENNV_NATIVE_BARTER_MENU_OPEN actor={actorReference} merchant={merchantContainer} discount={discount} " +
             $"items={_inventory.Items.Count}/{merchantInventory.Items.Count} source=ACHR-XMRC-GMST owner=shared-inventory " +
             "price-modifiers-restock-matched-ui-physical-xr-acceptance=unverified");

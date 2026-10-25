@@ -2,6 +2,7 @@ using Godot;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Formats.Gamebryo;
 using OpenNV.Runtime.Gameplay.State;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 namespace OpenNV.Runtime.World.Cells;
 
@@ -10,6 +11,9 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
     private RuntimeConfiguration _configuration = null!;
     private Camera3D _camera = null!;
     private float _pitchRadians;
+    private NativeVirtualGamepad? _gamepad;
+    /// <summary>Look speed of the right stick, in radians per second at full deflection.</summary>
+    private const float TouchLookRadiansPerSecond = 3.2f;
     private bool _movementEnabled = true;
     private bool _lookingEnabled = true;
     private bool _activationEnabled = true;
@@ -203,8 +207,28 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
 
     public override void _Ready()
     {
-        if (DisplayServer.GetName() != "headless")
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+        // Capturing the pointer is meaningless on a touch screen — there is no pointer —
+        // and it strips the position from every touch event, which the on-screen pad needs
+        // to tell a stick deflection from a button press.
+        if (DisplayServer.GetName() != "headless" && OS.GetName() is not ("Android" or "iOS"))
+            TouchPointerPolicy.Capture();
+        if (OS.GetName() is "Android" or "iOS") AttachVirtualGamepad();
+    }
+
+    /// <summary>
+    /// Touch devices get the on-screen pad: without it there is no pointer to capture, so
+    /// the camera could never turn. It lives on its own canvas layer so the cell scene can
+    /// be replaced without the pad being rebuilt.
+    /// </summary>
+    private void AttachVirtualGamepad()
+    {
+        if (_gamepad is not null) return;
+        var layer = new CanvasLayer { Layer = 8 };
+        AddChild(layer);
+        _gamepad = new NativeVirtualGamepad();
+        layer.AddChild(_gamepad);
+        _gamepad.PauseRequested += () => OpenPauseMenu?.Invoke();
+        GD.Print("OPENNV_VIRTUAL_PAD attached");
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)
@@ -236,7 +260,7 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
         }
         if (inputEvent.IsActionPressed(input.CaptureMouse.Action))
         {
-            Input.MouseMode = Input.MouseModeEnum.Captured;
+            TouchPointerPolicy.Capture();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -257,11 +281,24 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
             inputEvent is not InputEventMouseMotion motion)
             return;
         if (_furniturePhase is 1 or 2 or 4) return;
-        if (_furniturePhase == 3) _furnitureLookYaw -= motion.Relative.X * _configuration.Player.MouseSensitivityRadiansPerPixel;
-        else RotateY(-motion.Relative.X * _configuration.Player.MouseSensitivityRadiansPerPixel);
+        var sensitivity = _configuration.Player.MouseSensitivityRadiansPerPixel;
+        ApplyLookRadians(
+            -motion.Relative.X * sensitivity,
+            -motion.Relative.Y * sensitivity);
+    }
+
+    /// <summary>
+    /// Applies a look delta expressed in radians. The mouse scales its pixel delta by the
+    /// configured sensitivity first; the right stick supplies an angular velocity over the
+    /// frame instead. Both end up here so the pitch clamp, furniture rig and authored
+    /// source camera keep behaving exactly as they do for a mouse.
+    /// </summary>
+    private void ApplyLookRadians(float yaw, float pitch)
+    {
+        if (_furniturePhase == 3) _furnitureLookYaw += yaw;
+        else RotateY(yaw);
         _pitchRadians = Math.Clamp(
-            _pitchRadians - motion.Relative.Y *
-                _configuration.Player.MouseSensitivityRadiansPerPixel,
+            _pitchRadians + pitch,
             -_configuration.Player.VerticalLookLimitRadians,
             _configuration.Player.VerticalLookLimitRadians);
         if (_furniturePhase == 3) PublishFurnitureCamera();
@@ -281,13 +318,21 @@ internal partial class RuntimeNativePlayer : CharacterBody3D
         if (_furniturePhase != 0) { AdvanceFurniture(delta); return; }
         var input = _configuration.Player.DesktopInput;
         var alive = IsDefeated?.Invoke() != true;
+        if (_gamepad is not null) _gamepad.Visible = _furniturePhase == 0;
         var movement = alive && _movementEnabled && !_modalInput
-            ? _xr?.Movement ?? Input.GetVector(
-                input.MoveLeft.Action,
-                input.MoveRight.Action,
-                input.MoveBackward.Action,
-                input.MoveForward.Action)
+            ? _xr?.Movement ?? (_gamepad is not null && _gamepad.Movement.LengthSquared() > 0.0f
+                ? _gamepad.Movement
+                : Input.GetVector(
+                    input.MoveLeft.Action,
+                    input.MoveRight.Action,
+                    input.MoveBackward.Action,
+                    input.MoveForward.Action))
             : Vector2.Zero;
+        if (_gamepad is not null && !_modalInput && _lookingEnabled &&
+            _gamepad.Look.LengthSquared() > 0.0f)
+            ApplyLookRadians(
+                -_gamepad.Look.X * TouchLookRadiansPerSecond * (float)delta,
+                -_gamepad.Look.Y * TouchLookRadiansPerSecond * (float)delta);
         var forward = -_camera.GlobalBasis.Z;
         var right = _camera.GlobalBasis.X;
         forward.Y = 0.0f;

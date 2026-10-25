@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 
 
 using OpenNV.Runtime.Presentation.Ui;
@@ -126,7 +127,7 @@ internal partial class RetailOpening : CanvasLayer
             mp3.Loop = true;
         AddChild(_music);
         _music.Play();
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
         ScaleReferenceCanvas();
         if (initialFocus is not null)
             Callable.From(initialFocus.GrabFocus).CallDeferred();
@@ -244,7 +245,7 @@ internal partial class RetailOpening : CanvasLayer
             _video.Visible = false;
         }
         _canvas.Visible = true;
-        Input.MouseMode = Input.MouseModeEnum.Visible;
+        TouchPointerPolicy.Release();
     }
 
     private void SetButtonsDisabled()

@@ -1,4 +1,5 @@
 using Godot;
+using OpenNV.Runtime.Presentation.Gamepad;
 using OpenNV.Runtime.Content;
 using OpenNV.Runtime.Presentation.Ui;
 using OpenNV.Runtime.World.Cells;
@@ -61,7 +62,7 @@ public partial class RuntimeCoordinator
         void Close()
         {
             state.SetOpen(false); _nativePipBoyLayer?.QueueFree(); _nativePipBoyLayer = null; _nativePipBoy = null;
-            GetTree().Paused = wasPaused; player.SetModalInput(false); Input.MouseMode = Input.MouseModeEnum.Captured;
+            GetTree().Paused = wasPaused; player.SetModalInput(false); TouchPointerPolicy.Capture();
             SaveNativeInteraction();
         }
         try
@@ -74,7 +75,7 @@ public partial class RuntimeCoordinator
                 _configuration.Player.DesktopInput.PipBoy.Action, Close);
             _nativePipBoyLayer = new CanvasLayer { Name = "NativePipBoyLayer", Layer = 100, ProcessMode = ProcessModeEnum.Always };
             AddChild(_nativePipBoyLayer); _nativePipBoyLayer.AddChild(_nativePipBoy);
-            player.SetModalInput(true); Input.MouseMode = Input.MouseModeEnum.Visible; GetTree().Paused = true;
+            player.SetModalInput(true); TouchPointerPolicy.Release(); GetTree().Paused = true;
             GD.Print("OPENNV_NATIVE_PIPBOY_OPEN source=live-device-menus-map-state");
         }
         catch (Exception error) { Close(); GD.PushError($"OPENNV_NATIVE_PIPBOY_FAIL {error.Message}"); }
@@ -150,9 +151,9 @@ public partial class RuntimeCoordinator
                 {
                     _nativeContainerLayer!.QueueFree(); _nativeContainerLayer = null;
                     GetTree().Paused = wasPaused; _nativePlayer!.SetModalInput(false);
-                    Input.MouseMode = Input.MouseModeEnum.Captured; SaveNativeInteraction();
+                    TouchPointerPolicy.Capture(); SaveNativeInteraction();
                 }, () => { });
-            _nativePlayer!.SetModalInput(true); Input.MouseMode = Input.MouseModeEnum.Visible;
+            _nativePlayer!.SetModalInput(true); TouchPointerPolicy.Release();
             _nativeContainerLayer = new CanvasLayer { Name = "NativeContainerLayer", Layer = 100, ProcessMode = ProcessModeEnum.Always };
             AddChild(_nativeContainerLayer);
             _nativeContainerLayer.AddChild(menu);
@@ -160,7 +161,7 @@ public partial class RuntimeCoordinator
             {
                 _nativeContainerLayer.QueueFree(); _nativeContainerLayer = null;
                 GetTree().Paused = wasPaused; _nativePlayer.SetModalInput(false);
-                Input.MouseMode = Input.MouseModeEnum.Captured;
+                TouchPointerPolicy.Capture();
                 throw new NotSupportedException(failure);
             }
             GetTree().Paused = _nativeXr is null;
