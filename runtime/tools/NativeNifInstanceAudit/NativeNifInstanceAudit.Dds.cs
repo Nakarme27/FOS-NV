@@ -17,8 +17,17 @@ public partial class NativeNifInstanceAudit
             throw new InvalidOperationException("BC1 upload changed authored RGBA or mip levels.");
         using var opaque = ReadDds(DdsFixture(opaque: true));
         var compressed = opaque.GetData();
+        using var opaqueExpected = (Image)opaque.Duplicate();
+        if (opaqueExpected.Decompress() != Error.Ok) throw new InvalidOperationException("Opaque reference DDS did not decode.");
+        var requiresExpansion = RenderingServer.GetRenderingDevice() is null;
         using var opaqueTexture = NativeDdsTexture.Create(opaque);
-        if (opaque.GetFormat() != Image.Format.Dxt1 || !opaque.GetData().SequenceEqual(compressed))
+        if (requiresExpansion)
+        {
+            if (opaque.GetFormat() != Image.Format.Rgba8 || opaque.GetMipmapCount() != 3 ||
+                !opaque.GetData().SequenceEqual(opaqueExpected.GetData()))
+                throw new InvalidOperationException("Backend BC1 fallback changed authored pixels or mip levels.");
+        }
+        else if (opaque.GetFormat() != Image.Format.Dxt1 || !opaque.GetData().SequenceEqual(compressed))
             throw new InvalidOperationException("Opaque BC1 was unnecessarily expanded or modified.");
         var faces = new Godot.Collections.Array<Image>();
         try
@@ -29,7 +38,7 @@ public partial class NativeNifInstanceAudit
                 throw new InvalidOperationException("Cubemap faces lost their common format or mip levels.");
         }
         finally { foreach (var face in faces) face.Dispose(); }
-        GD.Print("OPENNV_DDS_UPLOAD_PASS encodedAlpha=true authoredMipBytes=true opaqueCompressed=true cubemapFaces=true");
+        GD.Print($"OPENNV_DDS_UPLOAD_PASS encodedAlpha=true authoredMipBytes=true opaqueCompressed={!requiresExpansion} backendFallback={requiresExpansion} cubemapFaces=true");
     }
 
     private async Task ExerciseDdsPixels(string[] args)

@@ -49,6 +49,9 @@ jobs:
           try {
             ./scripts/Test-GodotRuntime.ps1 -Godot '${{ steps.godot.outputs.path }}' *> $log
             if ($LASTEXITCODE -ne 0) { throw 'Runtime gate failed.' }
+          } catch {
+            $_ | Out-String | Add-Content -LiteralPath $log
+            throw
           } finally {
             if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 200 }
           }

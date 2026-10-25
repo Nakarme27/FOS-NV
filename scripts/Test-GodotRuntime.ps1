@@ -106,6 +106,14 @@ if ($LASTEXITCODE -ne 0) { throw "Desktop launcher tests failed." }
 
 $output = & $Godot --headless --editor --quit --path $runtime 2>&1
 $text = $output | Out-String
+# The pinned 4.7.2 editor's Android exporter queries EditorSettings during
+# teardown after the singleton is gone. Preserve this known engine diagnostic
+# as a warning; a nonzero exit or any other ERROR still fails project loading.
+$androidShutdownDiagnostic = '(?m)^ERROR: EditorSettings not instantiated yet when getting setting "export/android/shutdown_adb_on_exit"\.\r?$'
+if ($text -match '(?m)^Godot Engine v4\.7\.2\.' -and $text -match $androidShutdownDiagnostic) {
+    Write-Warning 'Godot 4.7.2 Android exporter queried EditorSettings during editor shutdown.'
+    $text = $text -replace $androidShutdownDiagnostic, 'WARNING: Godot 4.7.2 Android exporter shutdown diagnostic (retained).'
+}
 if ($LASTEXITCODE -ne 0 -or $text -match "(?m)^ERROR:") {
     throw "OpenNV Godot startup failed:`n$text"
 }
