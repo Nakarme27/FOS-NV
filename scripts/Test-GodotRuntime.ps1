@@ -142,4 +142,13 @@ if ($LASTEXITCODE -ne 0 -or $traceText -match "(?m)^ERROR:" -or
 }
 Write-Output "OPENNV_NATIVE_RENDER_TRACE_AUDIT_PASS nearPlane=clipped coverage=bounding-box-candidates exactPixels=unverified"
 
+
+$touchOutput = & $Godot --headless --path $runtime res://tools/NativeTouchInputAudit/NativeTouchInputAudit.tscn 2>&1
+$touchText = $touchOutput | Out-String
+if ($LASTEXITCODE -ne 0 -or $touchText -match "(?m)^ERROR:" -or
+    $touchText -notmatch "OPENNV_TOUCH_INPUT_AUDIT_PASS") {
+    throw "OpenNV touch input failed:`n$touchText"
+}
+Write-Output "OPENNV_TOUCH_INPUT_AUDIT_PASS"
+
 Write-Output "OPENNV_CSHARP_GODOT_GATE_PASS"

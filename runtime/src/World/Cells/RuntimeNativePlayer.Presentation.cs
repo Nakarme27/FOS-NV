@@ -45,8 +45,9 @@ internal partial class RuntimeNativePlayer
     {
         if (_modalInput || !_movementEnabled || _furniturePhase != 0 || _sourceCamera is not null) return false;
         if (WeaponInput(input)) return true;
-        if (input is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.F } && GetMeta("opennv_source_pointofview_enabled", true).AsBool())
+        if ((input is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.F } || input.IsActionPressed("flat_view")) && GetMeta("opennv_source_pointofview_enabled", true).AsBool())
         { _thirdPersonMode = !_thirdPersonMode; PublishThirdPersonCamera(); return true; }
+        if (input.IsAction("flat_aim")) { _aiming = input.IsPressed() && GetMeta("opennv_source_fighting_enabled", true).AsBool(); return true; }
         if (input is InputEventMouseButton mouse)
         {
             if (mouse.ButtonIndex == MouseButton.Right) { _aiming = mouse.Pressed; return true; }

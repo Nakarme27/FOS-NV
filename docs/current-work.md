@@ -1,5 +1,22 @@
 # Current work
 
+Android touch controls build on the existing on-screen pad. RT and X now enter
+native weapon handling through configured actions; LT aims and LB changes view.
+The adapter separates gameplay and modal menu input, provides directional menu
+navigation and direct pointer taps, and releases held state on cancellation,
+focus loss, resizing and modal transitions. The native input audit covers
+simultaneous analog sticks/fire, independent release, stick ownership, LT,
+focus loss, modal transitions and canceled touches.
+
+Debug/Release compilation (zero warnings/errors) and the native touch input audit pass, including modal
+A/B and single-owner menu pointer checks. The complete repository gate has
+not passed in this restricted environment; formatter IPC is denied. No Android
+hardware playthrough or owned-data campaign acceptance has been performed. V.A.T.S., waiting,
+player sneak, world flashlight, native prop grab and Xbox hotkey/ammunition
+selection still need their gameplay owners; the pad does not substitute other
+actions under their Xbox labels. The earlier gameplay investigation follows.
+
+
 ## Active objective
 
 Finish ordinary flat/OpenXR New Vegas gameplay, including every weapon,

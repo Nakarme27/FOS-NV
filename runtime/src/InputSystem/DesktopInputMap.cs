@@ -7,6 +7,8 @@ internal static class DesktopInputMap
 {
     internal static void Configure(DesktopInputConfiguration configuration)
     {
+        foreach (var action in new[] { "flat_aim", "flat_view" })
+            if (!InputMap.HasAction(action)) InputMap.AddAction(action);
         foreach (var binding in configuration.KeyBindings)
         {
             ResetAction(binding.Action);
