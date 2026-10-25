@@ -1,3 +1,5 @@
+using OpenNV.Runtime.Diagnostics;
+
 namespace OpenNV.Runtime.Content;
 
 internal enum NativeGame
@@ -16,15 +18,19 @@ internal sealed record NativeGameInstallation(NativeGame Game, string InstallRoo
 
     internal static NativeGameInstallation Detect(string selectedRoot)
     {
-        if (string.IsNullOrWhiteSpace(selectedRoot))
-            throw new ArgumentException("A game installation root is required.", nameof(selectedRoot));
-
-        var selected = Path.GetFullPath(selectedRoot);
-        if (!Directory.Exists(selected))
-            throw new DirectoryNotFoundException($"Selected game folder does not exist: {selected}");
+        FosNvLog.Info("install_detect_begin", $"selectedRoot={selectedRoot}");
 
         try
         {
+            if (string.IsNullOrWhiteSpace(selectedRoot))
+                throw new ArgumentException("A game installation root is required.", nameof(selectedRoot));
+
+            var selected = Path.GetFullPath(selectedRoot);
+            var selectedExists = Directory.Exists(selected);
+            FosNvLog.Info("install_path_resolved", $"selected={selected} exists={selectedExists}");
+            if (!selectedExists)
+                throw new DirectoryNotFoundException($"Selected game folder does not exist: {selected}");
+
             // Accept both the actual game root and its Data directory. Android users
             // often navigate directly to Data because that is where the large retail
             // payload lives. Keep InstallRoot normalized to the parent so INI and
@@ -36,15 +42,32 @@ internal sealed record NativeGameInstallation(NativeGame Game, string InstallRoo
                 ? Directory.GetParent(selected)?.FullName ?? selected
                 : selected;
             var contentRoot = dataRoot ?? selected;
+
+            FosNvLog.Info(
+                "install_layout",
+                $"selectedIsData={selectedIsData} installRoot={installRoot} " +
+                $"dataRoot={dataRoot ?? "<missing>"} contentRoot={contentRoot}");
+
             var game = DetectGame(installRoot, contentRoot);
-            return new NativeGameInstallation(game, installRoot, contentRoot);
+            var installation = new NativeGameInstallation(game, installRoot, contentRoot);
+            FosNvLog.Info(
+                "install_detect_success",
+                $"game={installation.Game} installRoot={installation.InstallRoot} contentRoot={installation.ContentRoot}");
+            return installation;
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw new UnauthorizedAccessException(
+            var wrapped = new UnauthorizedAccessException(
                 "Android can see the selected folder but FOS NV cannot read its files. " +
                 "Grant ‘All files access’ to FOS NV, return to the app, and select the folder again.",
                 exception);
+            FosNvLog.Exception("install_detect_unauthorized", wrapped, $"selectedRoot={selectedRoot}");
+            throw wrapped;
+        }
+        catch (Exception exception)
+        {
+            FosNvLog.Exception("install_detect_fail", exception, $"selectedRoot={selectedRoot}");
+            throw;
         }
     }
 
