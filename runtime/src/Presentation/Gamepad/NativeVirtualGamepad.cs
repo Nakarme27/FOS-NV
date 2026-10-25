@@ -114,7 +114,7 @@ internal sealed partial class NativeVirtualGamepad : Control
     {
         var size = GetViewportRect().Size;
         if (size.X < 2.0f || size.Y < 2.0f) return;
-        _height = size.Y;
+        _height = Mathf.Min(size.Y, size.X / 1.8f);
         _stickRadius = _height * 0.155f;
         _knobRadius = _stickRadius * KnobFraction;
         _buttonRadius = _height * ButtonFraction;
@@ -122,9 +122,9 @@ internal sealed partial class NativeVirtualGamepad : Control
         _menuRadius = _height * MenuFraction;
         _buttonGap = _height * ButtonGapFraction;
         _labelSize = Mathf.Max(10, (int)(_height * LabelFraction));
-        _leftCenter = new Vector2(_height * 0.28f, _height * 0.74f);
-        _rightCenter = new Vector2(size.X - _height * 0.95f, _height * 0.74f);
-        _faceCenter = new Vector2(size.X - _height * 0.26f, _height * 0.46f);
+        _leftCenter = new Vector2(_height * 0.28f, size.Y - _height * 0.26f);
+        _rightCenter = new Vector2(size.X - _height * 0.95f, size.Y - _height * 0.26f);
+        _faceCenter = new Vector2(size.X - _height * 0.26f, size.Y - _height * 0.54f);
         _triggerLeft = new Vector2(_height * 0.44f, _height * 0.10f);
         _triggerRight = new Vector2(size.X - _height * 0.18f, _height * 0.16f);
         _bumperLeft = new Vector2(_height * 0.20f, _height * 0.16f);

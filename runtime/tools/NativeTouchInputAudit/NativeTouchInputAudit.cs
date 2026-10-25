@@ -24,9 +24,9 @@ public partial class NativeTouchInputAudit : Node
             var pad = new NativeVirtualGamepad { GameplayInput = () => gameplay };
             AddChild(pad);
             var size = GetViewport().GetVisibleRect().Size;
-            var h = size.Y;
-            var left = new Vector2(h * .28f, h * .74f);
-            var right = new Vector2(size.X - h * .95f, h * .74f);
+            var h = Mathf.Min(size.Y, size.X / 1.8f);
+            var left = new Vector2(h * .28f, size.Y - h * .26f);
+            var right = new Vector2(size.X - h * .95f, size.Y - h * .26f);
             var fire = new Vector2(size.X - h * .18f, h * .16f);
             Touch(pad, 0, left + new Vector2(h * .08f, 0), true);
             Touch(pad, 1, right + new Vector2(0, -h * .08f), true);
@@ -54,7 +54,7 @@ public partial class NativeTouchInputAudit : Node
             pad._Input(cancel); Input.FlushBufferedEvents();
             Require(!Input.IsActionPressed("flat_fire"), "canceled touch releases trigger");
             gameplay = false; pad._Process(.016); Input.FlushBufferedEvents();
-            var face = new Vector2(size.X - h * .26f, h * .46f);
+            var face = new Vector2(size.X - h * .26f, size.Y - h * .54f);
             Touch(pad, 0, face + new Vector2(0, h * .128f), true);
             pad._Process(.016); Input.FlushBufferedEvents();
             Touch(pad, 0, face, false);
