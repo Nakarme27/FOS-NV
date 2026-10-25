@@ -8,13 +8,17 @@ internal static class NativeDdsTexture
 {
     internal static Action<Image.Format, int, int, double, double>? UploadObserver { get; set; }
 
+    private static bool? _expandedUpload;
+
     /// <summary>
-    /// Mobile GLES3 drivers do not expose the S3TC/BPTC block-compressed formats, so an
-    /// upload of a DXT/BC image fails inside the GL back end and the surface samples
-    /// garbage (the flashing checkerboard seen on Adreno). Expanding to RGBA8 on the CPU
-    /// before the upload is the portable path.
+    /// Block-compressed uploads only need a CPU expansion when the back end has no
+    /// RenderingDevice — that is, gl_compatibility, whose GLES driver does not expose the
+    /// S3TC/BPTC formats and fails the upload in _get_gl_image_and_format (the flashing
+    /// checkerboard). Vulkan back ends sample BC directly and keep the 8x smaller GPU
+    /// footprint, which matters on a 5.6 GB phone: expanding every texture to RGBA8 there
+    /// exhausted memory and the system killed the process mid-session.
     /// </summary>
-    private static readonly bool RequiresExpandedUpload = OS.GetName() is "Android" or "iOS";
+    private static bool RequiresExpandedUpload => _expandedUpload ??= RenderingServer.GetRenderingDevice() is null;
 
     private static bool? _authoredMipChains;
     private static readonly HashSet<string> _reportedFormats = new(StringComparer.Ordinal);

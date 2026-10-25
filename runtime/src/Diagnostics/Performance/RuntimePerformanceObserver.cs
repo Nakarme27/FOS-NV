@@ -44,7 +44,21 @@ internal partial class RuntimePerformanceObserver : Node
         _elapsedSeconds -= _configuration.SampleIntervalSeconds *
             Math.Floor(_elapsedSeconds / _configuration.SampleIntervalSeconds);
         Sample();
+        // A hitch shows up as a collapsed FPS with a healthy main-thread time, which means
+        // the stall is on the GPU (pipeline compilation or a texture upload). Emit one line
+        // per hitch so it can be correlated with the content being streamed at that moment.
+        var fps = Godot.Performance.GetMonitor(Godot.Performance.Monitor.TimeFps);
+        if (fps < HitchFps)
+            GD.PushWarning($"OPENNV_PERF_HITCH fps={fps} process_ms={Godot.Performance.GetMonitor(Godot.Performance.Monitor.TimeProcess) * 1000.0:0.0} " +
+                $"nodes={Godot.Performance.GetMonitor(Godot.Performance.Monitor.ObjectNodeCount)} " +
+                $"orphans={Godot.Performance.GetMonitor(Godot.Performance.Monitor.ObjectOrphanNodeCount)} " +
+                $"rendered={(int)Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalObjectsInFrame)}");
+        // Rewrite the report on every sample: a hang or a system kill never reaches
+        // _ExitTree, and that is exactly the case this report is needed for.
+        if (_reportPath is not null) WriteReport(_reportPath);
     }
+
+    private const int HitchFps = 15;
 
     public override void _ExitTree()
     {

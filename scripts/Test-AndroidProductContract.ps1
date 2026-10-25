@@ -59,7 +59,7 @@ foreach ($fragment in $forbiddenPresetFragments) {
 }
 
 $requiredProjectFragments = @(
-    'renderer/rendering_method.mobile="gl_compatibility"',
+    'renderer/rendering_method.mobile="mobile"',
     'textures/vram_compression/import_etc2_astc=true'
 )
 foreach ($fragment in $requiredProjectFragments) {

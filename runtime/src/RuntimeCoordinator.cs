@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Godot;
 using OpenNV.Runtime.Diagnostics.Performance;
+using OpenNV.Runtime.Presentation.Rendering;
 using OpenNV.Runtime.World.Portals;
 using OpenNV.Runtime.Campaigns.TTW;
 
@@ -67,6 +68,8 @@ public partial class RuntimeCoordinator : Node3D
     private string? _acceptedOpeningMenuAction;
     private ulong _loadingStartedMilliseconds;
     private const double MinimumLoadingScreenSeconds = 0.85;
+    /// <summary>Uploads slower than this are reported; they stall the rendered frame.</summary>
+    private const double SlowTextureMilliseconds = 30.0;
 
     public override void _Ready()
     {
@@ -141,7 +144,11 @@ public partial class RuntimeCoordinator : Node3D
                 "perf-report",
                 out var configuredPerformanceReportPath)
                 ? ValidatePerformanceReportPath(configuredPerformanceReportPath)
-                : null;
+                : OS.GetName() == "Android"
+                    // Android has no command line to pass --perf-report, and a hang is the
+                    // failure this instrument exists for, so always sample to a fixed file.
+                    ? ProjectSettings.GlobalizePath("user://perf-report.json")
+                    : null;
             var performanceObserver = new RuntimePerformanceObserver();
             performanceObserver.Configure(
                 _configuration.Performance,
@@ -149,6 +156,15 @@ public partial class RuntimeCoordinator : Node3D
                 _configuration.Sha256,
                 performanceReportPath);
             AddChild(performanceObserver);
+            // Texture preparation and upload run on the main thread when a surface first
+            // enters the frustum, which is where the measured 400 ms stalls come from.
+            // Report every slow one with its format and size so the culprit is named.
+            NativeDdsTexture.UploadObserver = (format, width, height, prepareMs, uploadMs) =>
+            {
+                if (prepareMs + uploadMs < SlowTextureMilliseconds) return;
+                GD.PushWarning($"OPENNV_TEXTURE_SLOW format={format} size={width}x{height} " +
+                    $"prepare_ms={prepareMs:0.0} upload_ms={uploadMs:0.0}");
+            };
             if (launch.LoadingTitle is not null)
                 _loadingScreen?.SetTitle(launch.LoadingTitle);
             RuntimeLaunchValidator.ValidatePreflight(_options);

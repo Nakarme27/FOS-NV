@@ -7,6 +7,16 @@ namespace OpenNV.Runtime.Presentation.Rendering;
 
 internal static class RetailImageSpaceRenderer
 {
+    /// <summary>
+    /// The compositor writes its final transfer pass into the scene colour layer as a
+    /// storage image. Godot creates that layer without TEXTURE_USAGE_STORAGE_BIT on the
+    /// Vulkan mobile back ends (Adreno), so every pass failed with "Could not bind a
+    /// retail HDR compositor pass" and the frame stalled at 1 FPS or worse. Without the
+    /// effect the scene keeps Godot's own tonemapping: correct lighting, but not the
+    /// retail HDR curve. Reported once so the gap stays visible.
+    /// </summary>
+    private static readonly bool CompositorSupported = OS.GetName() is not ("Android" or "iOS");
+
     internal static Application CreateFromSource(FalloutImageSpace source,
         RetailImageSpaceConfiguration configuration, CaptureConfiguration capture,
         ColorTransferConfiguration outputTransfer)
@@ -17,10 +27,22 @@ internal static class RetailImageSpaceRenderer
             configuration, capture, outputTransfer, runtimeAdaptation: true,
             FalloutImageSpacePrograms.Read(RuntimeLiveContentSource.Current ??
                 throw new InvalidOperationException("Owned image-space content is absent.")));
-        var compositor = new Compositor { CompositorEffects = new Godot.Collections.Array<CompositorEffect> { effect } };
+        var compositor = new Compositor { CompositorEffects = Effects(effect) };
         return new Application(configuration.Schema, cinematic, tint, Vector4.Zero, 1, source.DnamSha256,
             [], effect, compositor);
     }
+
+    private static Godot.Collections.Array<CompositorEffect> Effects(CompositorEffect effect)
+    {
+        if (CompositorSupported) return new Godot.Collections.Array<CompositorEffect> { effect };
+        if (_compositorGapReported) return new Godot.Collections.Array<CompositorEffect>();
+        _compositorGapReported = true;
+        GD.PushWarning("OPENNV_HDR_COMPOSITOR_SKIPPED reason=scene-colour-lacks-storage-bit platform=" +
+            OS.GetName());
+        return new Godot.Collections.Array<CompositorEffect>();
+    }
+
+    private static bool _compositorGapReported;
 
     internal static Application Apply(
         WorldEnvironment environment,
@@ -65,7 +87,7 @@ internal static class RetailImageSpaceRenderer
             runtimeAdaptation);
         var compositor = new Compositor
         {
-            CompositorEffects = new Godot.Collections.Array<CompositorEffect> { effect },
+            CompositorEffects = Effects(effect),
         };
         return new Application(
             configuration.Schema,
